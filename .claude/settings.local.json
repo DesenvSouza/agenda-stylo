@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"F:\\\\agenda-estilo\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer, Length, LastWriteTime)",
+      "Bash(Format-Table -AutoSize)"
+    ]
+  }
+}

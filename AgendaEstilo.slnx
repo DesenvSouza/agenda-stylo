@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgendaEstilo.Api/AgendaEstilo.Api.csproj" />
+    <Project Path="src/AgendaEstilo.Application/AgendaEstilo.Application.csproj" />
+    <Project Path="src/AgendaEstilo.Domain/AgendaEstilo.Domain.csproj" />
+    <Project Path="src/AgendaEstilo.Infrastructure/AgendaEstilo.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgendaEstilo.Tests/AgendaEstilo.Tests.csproj" />
+  </Folder>
+</Solution>
