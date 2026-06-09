@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authApi } from "@/lib/api";
+import { saveReferralCode, clearReferralCode } from "@/lib/referral";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,8 @@ const CATEGORIES = [
   { value: 6, label: "Outro" },
 ];
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     establishmentName: "",
     slug: "",
@@ -26,10 +28,19 @@ export default function RegisterPage() {
     phone: "",
     email: "",
     password: "",
+    referralCode: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      saveReferralCode(ref);
+      setForm(prev => ({ ...prev, referralCode: ref.toUpperCase() }));
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -49,7 +60,11 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.register(form);
+      await authApi.register({
+        ...form,
+        referralCode: form.referralCode || undefined,
+      });
+      clearReferralCode();
       router.replace("/login");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -125,6 +140,18 @@ export default function RegisterPage() {
                 <Label htmlFor="password">Senha</Label>
                 <Input id="password" name="password" type="password" autoComplete="new-password" value={form.password} onChange={handleChange} placeholder="Mínimo 8 caracteres" minLength={8} required />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="referralCode">Código de indicação <span className="text-[#6B6B6B] font-normal">(opcional)</span></Label>
+                <Input
+                  id="referralCode"
+                  name="referralCode"
+                  value={form.referralCode}
+                  onChange={(e) => setForm(prev => ({ ...prev, referralCode: e.target.value.toUpperCase() }))}
+                  placeholder="Ex: AB3K7XZ9"
+                  maxLength={20}
+                  className="font-mono"
+                />
+              </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Criando conta..." : "Criar conta"}
@@ -140,5 +167,13 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }

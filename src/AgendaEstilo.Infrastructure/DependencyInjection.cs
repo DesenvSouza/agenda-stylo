@@ -1,4 +1,5 @@
 using AgendaEstilo.Application.Common;
+using AgendaEstilo.Infrastructure.Services;
 using AgendaEstilo.Domain.Interfaces;
 using AgendaEstilo.Infrastructure.Jobs;
 using AgendaEstilo.Infrastructure.Persistence;
@@ -40,6 +41,8 @@ public static class DependencyInjection
 
         // Legado (mantido para compatibilidade)
         services.AddScoped<INotificationJobService, NotificationJobService>();
+        services.AddScoped<SystemJwtService>();
+        services.AddScoped<ISystemJwtService>(sp => sp.GetRequiredService<SystemJwtService>());
 
         services.AddHttpClient();
 

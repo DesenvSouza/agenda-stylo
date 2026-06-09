@@ -17,5 +17,8 @@ public interface IAppDbContext
     DbSet<Booking> Bookings { get; }
     DbSet<ReminderLog> ReminderLogs { get; }
     DbSet<User> Users { get; }
+    DbSet<SystemUser> SystemUsers { get; }
+    DbSet<PlanSubscriptionPayment> PlanSubscriptionPayments { get; }
+    DbSet<PromoterConversion> PromoterConversions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using AgendaEstilo.Api.Endpoints;
+using Microsoft.EntityFrameworkCore;
 using AgendaEstilo.Api.Middleware;
 using AgendaEstilo.Application;
 using AgendaEstilo.Infrastructure;
@@ -43,7 +44,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireSystemAdmin", policy =>
+        policy.RequireClaim("sysRole", "Admin"));
+    options.AddPolicy("RequireSystemPromoter", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.HasClaim("sysRole", "Admin") ||
+            ctx.User.HasClaim("sysRole", "Promoter")));
+});
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -123,5 +132,28 @@ app.MapDashboardEndpoints();
 app.MapNotificationSettingsEndpoints();
 app.MapEstablishmentEndpoints();
 app.MapProfessionalPortalEndpoints();
+app.MapAdminEndpoints();
+
+// ── Seed: garante que existe ao menos 1 admin no banco ───────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AgendaEstilo.Infrastructure.Persistence.AppDbContext>();
+    await db.Database.MigrateAsync();
+
+    if (!db.SystemUsers.Any(u => u.Role == 0))
+    {
+        var adminPass = builder.Configuration["Admin:InitialPassword"] ?? "Admin@2025!";
+        db.SystemUsers.Add(new AgendaEstilo.Domain.Entities.SystemUser
+        {
+            Name               = "Admin",
+            Email              = builder.Configuration["Admin:Email"] ?? "admin@agendaestilo.com.br",
+            PasswordHash       = BCrypt.Net.BCrypt.HashPassword(adminPass),
+            Role               = 0, // Admin
+            IsActive           = true,
+            MustChangePassword = true,
+        });
+        await db.SaveChangesAsync();
+    }
+}
 
 app.Run();

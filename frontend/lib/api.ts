@@ -45,6 +45,7 @@ export const authApi = {
     phone: string;
     email: string;
     password: string;
+    referralCode?: string;
   }) => api.post("/api/auth/register", data),
 };
 

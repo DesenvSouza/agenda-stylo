@@ -30,6 +30,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<ReminderLog> ReminderLogs => Set<ReminderLog>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
+    public DbSet<PlanSubscriptionPayment> PlanSubscriptionPayments => Set<PlanSubscriptionPayment>();
+    public DbSet<PromoterConversion> PromoterConversions => Set<PromoterConversion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +49,47 @@ public class AppDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<Booking>().HasQueryFilter(e => e.TenantId == _tenantService.TenantId && !e.IsDeleted);
         modelBuilder.Entity<ReminderLog>().HasQueryFilter(e => e.TenantId == _tenantService.TenantId && !e.IsDeleted);
         modelBuilder.Entity<User>().HasQueryFilter(e => e.TenantId == _tenantService.TenantId && !e.IsDeleted);
+
+        // ── Entidades cross-tenant (sem query filter de tenant) ──────────────
+        modelBuilder.Entity<SystemUser>(b =>
+        {
+            b.ToTable("system_users");
+            b.HasKey(e => e.Id);
+            b.HasIndex(e => e.Email).IsUnique();
+            b.HasIndex(e => e.PromoterCode).IsUnique().HasFilter("\"PromoterCode\" IS NOT NULL");
+            b.Property(e => e.CommissionPercent).HasPrecision(5, 2);
+        });
+
+        modelBuilder.Entity<PlanSubscriptionPayment>(b =>
+        {
+            b.ToTable("plan_subscription_payments");
+            b.HasKey(e => e.Id);
+            b.HasIndex(e => e.EstablishmentId);
+            b.HasIndex(e => e.PaidAt);
+            b.Property(e => e.Amount).HasPrecision(18, 2);
+            b.HasOne(e => e.Establishment)
+             .WithMany(e => e.PlanPayments)
+             .HasForeignKey(e => e.EstablishmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PromoterConversion>(b =>
+        {
+            b.ToTable("promoter_conversions");
+            b.HasKey(e => e.Id);
+            b.HasIndex(e => e.PromoterId);
+            b.HasIndex(e => e.EstablishmentId).IsUnique(); // cada estabelecimento só gera 1 comissão
+            b.Property(e => e.PlanAmount).HasPrecision(18, 2);
+            b.Property(e => e.CommissionAmount).HasPrecision(18, 2);
+            b.HasOne(e => e.Promoter)
+             .WithMany(e => e.Conversions)
+             .HasForeignKey(e => e.PromoterId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(e => e.Establishment)
+             .WithMany(e => e.PromoterConversions)
+             .HasForeignKey(e => e.EstablishmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -22,7 +22,12 @@ public class Establishment : BaseEntity
     public string? ContactEmail { get; set; }
     public string? NotificationSettingsJson { get; set; }
 
+    /// <summary>Código do promotor usado no cadastro (indica quem indicou).</summary>
+    public string? ReferralCode { get; set; }
+
     public ICollection<Professional> Professionals { get; set; } = new List<Professional>();
+    public ICollection<PlanSubscriptionPayment> PlanPayments { get; set; } = new List<PlanSubscriptionPayment>();
+    public ICollection<PromoterConversion> PromoterConversions { get; set; } = new List<PromoterConversion>();
     public ICollection<Service> Services { get; set; } = new List<Service>();
     public ICollection<Client> Clients { get; set; } = new List<Client>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();

@@ -13,7 +13,8 @@ public record RegisterCommand(
     EstablishmentCategory Category,
     string Phone,
     string Email,
-    string Password) : IRequest<Guid>;
+    string Password,
+    string? ReferralCode = null) : IRequest<Guid>;
 
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -48,6 +49,17 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
         var tenantId = Guid.NewGuid();
         var establishmentId = Guid.NewGuid();
 
+        // Valida código de referência (se informado)
+        string? validatedReferralCode = null;
+        if (!string.IsNullOrWhiteSpace(request.ReferralCode))
+        {
+            var code = request.ReferralCode.Trim().ToUpperInvariant();
+            var promoterExists = await _db.SystemUsers
+                .AnyAsync(u => u.Role == 1 && u.IsActive && u.PromoterCode == code, cancellationToken);
+            if (promoterExists)
+                validatedReferralCode = code;
+        }
+
         var establishment = new Establishment
         {
             Id = establishmentId,
@@ -55,7 +67,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
             Name = request.EstablishmentName,
             Slug = request.Slug,
             Category = request.Category,
-            Phone = request.Phone
+            Phone = request.Phone,
+            ReferralCode = validatedReferralCode
         };
 
         var user = new User
