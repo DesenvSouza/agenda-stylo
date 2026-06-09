@@ -4,42 +4,44 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminApi, AdminSummary, TopPromoterDto, RecentEstablishmentDto } from '@/lib/admin-api';
 import {
-  Building2,
-  TrendingUp,
-  Users,
-  Calendar,
-  DollarSign,
-  Award,
-  ArrowUpRight,
-  Clock,
+  Building2, TrendingUp, Users, Calendar,
+  DollarSign, ChevronRight,
 } from 'lucide-react';
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
-}
+const BRL = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-function StatCard({
-  label, value, sub, icon: Icon, iconClass,
+function MetricCard({
+  icon: Icon, label, value, sub, accent,
 }: {
-  label: string;
-  value: string | number;
-  sub?: string;
   icon: React.ElementType;
-  iconClass: string;
+  label: string;
+  value: string;
+  sub?: string;
+  accent: 'indigo' | 'emerald' | 'blue' | 'amber';
 }) {
+  const colors = {
+    indigo:  { icon: 'text-indigo-400',  bg: 'bg-indigo-500/10'  },
+    emerald: { icon: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    blue:    { icon: 'text-blue-400',    bg: 'bg-blue-500/10'    },
+    amber:   { icon: 'text-amber-400',   bg: 'bg-amber-500/10'   },
+  }[accent];
+
   return (
-    <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-5 flex gap-4 items-start">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}>
-        <Icon size={19} />
+    <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl p-5 flex items-start gap-4">
+      <div className={`${colors.bg} p-2.5 rounded-xl shrink-0`}>
+        <Icon size={18} className={colors.icon} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+        <p className="text-xs text-[#666]">{label}</p>
+        <p className="text-xl font-bold text-white mt-0.5 truncate">{value}</p>
+        {sub && <p className="text-[11px] text-[#555] mt-0.5">{sub}</p>}
       </div>
     </div>
   );
 }
+
+const MEDALS = ['🥇', '🥈', '🥉'];
 
 export default function AdminDashboardPage() {
   const [summary, setSummary] = useState<AdminSummary | null>(null);
@@ -48,143 +50,175 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     adminApi.getSummary()
       .then(setSummary)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-32">
-      <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-  if (!summary) return <div className="text-center py-20 text-red-400">Erro ao carregar dados.</div>;
-
-  const categoryEntries = Object.entries(summary.establishmentsByCategory).sort((a, b) => b[1] - a[1]);
+  const s = summary;
+  const categoryEntries = s
+    ? Object.entries(s.establishmentsByCategory).sort((a, b) => b[1] - a[1])
+    : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral do sistema</p>
+        <p className="text-[#666] text-sm mt-1">Visão geral da plataforma</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Estabelecimentos"
-          value={summary.totalEstablishments}
-          sub={`+${summary.newThisMonth} este mês`}
-          icon={Building2}
-          iconClass="bg-blue-500/10 text-blue-400"
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          icon={Building2} label="Estabelecimentos" accent="indigo"
+          value={loading ? '—' : String(s?.totalEstablishments ?? 0)}
+          sub={loading ? undefined : `+${s?.newThisMonth ?? 0} este mês`}
         />
-        <StatCard
-          label="MRR Estimado"
-          value={fmt(summary.mrrEstimate)}
-          sub={`Receita total: ${fmt(summary.totalRevenue)}`}
-          icon={DollarSign}
-          iconClass="bg-emerald-500/10 text-emerald-400"
+        <MetricCard
+          icon={DollarSign} label="MRR estimado" accent="emerald"
+          value={loading ? '—' : BRL(s?.mrrEstimate ?? 0)}
+          sub={loading ? undefined : `Total: ${BRL(s?.totalRevenue ?? 0)}`}
         />
-        <StatCard
-          label="Agendamentos"
-          value={summary.totalBookings.toLocaleString('pt-BR')}
-          sub={`${summary.totalBookingsThisMonth} este mês`}
-          icon={Calendar}
-          iconClass="bg-purple-500/10 text-purple-400"
+        <MetricCard
+          icon={Calendar} label="Agendamentos" accent="blue"
+          value={loading ? '—' : (s?.totalBookings ?? 0).toLocaleString('pt-BR')}
+          sub={loading ? undefined : `${s?.totalBookingsThisMonth ?? 0} este mês`}
         />
-        <StatCard
-          label="Promotores"
-          value={summary.totalPromoters}
-          sub={`${summary.activePromoters} ativos · ${fmt(summary.totalCommissionsOwed)} em comissões`}
-          icon={Users}
-          iconClass="bg-orange-500/10 text-orange-400"
+        <MetricCard
+          icon={Users} label="Promotores" accent="amber"
+          value={loading ? '—' : String(s?.totalPromoters ?? 0)}
+          sub={loading ? undefined : `${s?.activePromoters ?? 0} ativos`}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top promotores do mês */}
-        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm">
-              <Award size={16} className="text-orange-400" />
-              Top Promotores (Mês)
-            </h2>
-            <Link href="/admin/promoters" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
-              Ver todos <ArrowUpRight size={12} />
+      {/* Comissões + categorias */}
+      {!loading && s && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Comissões */}
+          <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl p-5 flex items-center gap-4">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl shrink-0">
+              <Users size={18} className="text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-[#666]">Comissões a pagar</p>
+              <p className="text-xl font-bold text-white mt-0.5">{BRL(s.totalCommissionsOwed)}</p>
+              <p className="text-[11px] text-[#555]">
+                {s.totalPromoters} promotores ({s.activePromoters} ativos)
+              </p>
+            </div>
+            <Link href="/admin/promoters" className="text-indigo-400 hover:opacity-70 transition-opacity shrink-0">
+              <ChevronRight size={18} />
             </Link>
           </div>
-          {summary.topPromotersThisMonth.length === 0 ? (
-            <p className="text-sm text-gray-600">Nenhuma conversão este mês.</p>
-          ) : (
-            <div className="space-y-3">
-              {summary.topPromotersThisMonth.map((p: TopPromoterDto, i: number) => (
-                <div key={p.id} className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    i === 0 ? 'bg-yellow-500/15 text-yellow-400' :
-                    i === 1 ? 'bg-gray-500/15 text-gray-400' :
-                    'bg-amber-500/15 text-amber-400'
-                  }`}>{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-200 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500">{p.conversions} conversões</p>
-                  </div>
-                  <span className="text-sm font-semibold text-emerald-400 shrink-0">{fmt(p.commission)}</span>
-                </div>
-              ))}
+
+          {/* Por categoria */}
+          {categoryEntries.length > 0 && (
+            <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl p-5">
+              <h2 className="text-xs font-semibold text-[#666] mb-3 uppercase tracking-wide">Por categoria</h2>
+              <div className="space-y-2.5">
+                {categoryEntries.slice(0, 4).map(([cat, count]) => {
+                  const pct = s.totalEstablishments > 0
+                    ? Math.round((count / s.totalEstablishments) * 100)
+                    : 0;
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-[#888]">{cat}</span>
+                        <span className="text-xs text-[#555]">{count} ({pct}%)</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-indigo-500 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
+      )}
 
-        {/* Estabelecimentos recentes */}
-        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm">
-              <Clock size={16} className="text-blue-400" />
-              Últimos Estabelecimentos
-            </h2>
-            <Link href="/admin/establishments" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
-              Ver todos <ArrowUpRight size={12} />
+      {/* Top promotores do mês */}
+      {!loading && s && s.topPromotersThisMonth.length > 0 && (
+        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+            <h2 className="text-sm font-semibold text-white">Top promotores — este mês</h2>
+            <Link href="/admin/promoters" className="text-xs text-indigo-400 hover:underline font-medium flex items-center gap-1">
+              Ver todos <ChevronRight size={12} />
             </Link>
           </div>
-          <div className="space-y-1">
-            {summary.recentEstablishments.map((est: RecentEstablishmentDto) => (
-              <div key={est.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
-                <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold text-sm shrink-0">
-                  {est.name.charAt(0).toUpperCase()}
-                </div>
+          <div className="divide-y divide-white/[0.04]">
+            {s.topPromotersThisMonth.map((p: TopPromoterDto, i: number) => (
+              <div key={p.id} className="flex items-center gap-3 px-5 py-3">
+                <span className="text-base w-6 shrink-0">{MEDALS[i] ?? `${i + 1}.`}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-200 truncate">{est.name}</p>
-                  <p className="text-xs text-gray-500">{est.category} · {est.slug}</p>
+                  <p className="text-sm font-medium text-white truncate">{p.name}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  {est.referralCode && (
-                    <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium">
-                      {est.referralCode}
-                    </span>
-                  )}
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {new Date(est.createdAt).toLocaleDateString('pt-BR')}
-                  </p>
+                  <p className="text-xs font-semibold text-indigo-400">{p.conversions} conv.</p>
+                  <p className="text-[11px] text-emerald-400">{BRL(p.commission)}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Por categoria */}
-      {categoryEntries.length > 0 && (
-        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6">
-          <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm mb-5">
-            <TrendingUp size={16} className="text-purple-400" />
-            Estabelecimentos por Categoria
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {categoryEntries.map(([cat, count]) => (
-              <div key={cat} className="bg-white/4 rounded-xl p-4 text-center border border-white/5 hover:bg-white/6 transition-colors">
-                <p className="text-2xl font-bold text-white">{count}</p>
-                <p className="text-xs text-gray-500 mt-1">{cat}</p>
+      {/* Estabelecimentos recentes */}
+      <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <h2 className="text-sm font-semibold text-white">Estabelecimentos recentes</h2>
+          <Link href="/admin/establishments" className="text-xs text-indigo-400 hover:underline font-medium flex items-center gap-1">
+            Ver todos <ChevronRight size={12} />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="p-4 space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-10 rounded-xl bg-white/[0.04] animate-pulse" />
+            ))}
+          </div>
+        ) : !s || s.recentEstablishments.length === 0 ? (
+          <p className="text-xs text-[#555] text-center py-8">Nenhum estabelecimento cadastrado.</p>
+        ) : (
+          <div className="divide-y divide-white/[0.04]">
+            {s.recentEstablishments.map((est: RecentEstablishmentDto) => (
+              <div key={est.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[#888]">
+                    {est.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{est.name}</p>
+                  <p className="text-[11px] text-[#555] truncate">{est.category} · {est.slug}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {est.referralCode && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300">
+                      {est.referralCode}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-[#444] whitespace-nowrap">
+                    {new Date(est.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Skeleton de loading para seções abaixo */}
+      {loading && (
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="h-32 rounded-2xl bg-[#1A1A1A] animate-pulse" />
+          ))}
         </div>
       )}
     </div>

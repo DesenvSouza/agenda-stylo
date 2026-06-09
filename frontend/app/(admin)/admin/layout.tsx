@@ -42,118 +42,103 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.replace('/admin-login');
   }
 
-  if (!user) return null;
-
-  const NavLinks = ({ onClick }: { onClick?: () => void }) => (
-    <div className="flex-1 px-2 py-4 space-y-0.5">
-      {adminNav.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || (href !== '/admin' && pathname.startsWith(href));
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onClick}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-              active
-                ? 'bg-indigo-500/15 text-indigo-400 font-medium'
-                : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-            }`}
-          >
-            <Icon size={17} />
-            {label}
-            {active && <ChevronRight size={13} className="ml-auto text-indigo-500" />}
-          </Link>
-        );
-      })}
+  if (!user) return (
+    <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center">
+      <p className="text-[#555] text-sm">Carregando...</p>
     </div>
   );
 
+  const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
+    <>
+      {/* Brand */}
+      <div className="px-5 py-5 border-b border-white/[0.06]">
+        <p className="text-white font-bold text-lg tracking-tight">AgendaEstilo</p>
+        <p className="text-[#555] text-[11px] mt-0.5">Admin Panel</p>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
+        {adminNav.map(({ href, label, icon: Icon }) => {
+          const active = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNav}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-indigo-500/[0.12] text-indigo-400'
+                  : 'text-[#888] hover:text-white hover:bg-white/[0.05]'
+              }`}
+            >
+              <Icon size={16} className="shrink-0" />
+              {label}
+              {active && <ChevronRight size={12} className="ml-auto text-indigo-500/60" />}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-2 pb-4 border-t border-white/[0.06] pt-4">
+        <div className="px-3 py-2 mb-2">
+          <p className="text-[11px] text-[#888] truncate font-medium">{user.name}</p>
+          <p className="text-[10px] text-[#555]">Administrador</p>
+        </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#888] hover:text-red-400 hover:bg-red-500/[0.08] transition-colors"
+        >
+          <LogOut size={15} />
+          Sair
+        </button>
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex h-screen bg-[#0d0f14]">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col w-60 bg-[#13161e] border-r border-white/6 shrink-0">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/6">
-          <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">AgendaEstilo</p>
-          <p className="text-sm font-bold text-white mt-0.5">Painel Admin</p>
-        </div>
-
-        <NavLinks />
-
-        {/* User */}
-        <div className="px-4 py-4 border-t border-white/6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-200 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors"
-          >
-            <LogOut size={15} />
-            Sair
-          </button>
-        </div>
+    <div className="min-h-screen bg-[#111]">
+      {/* Desktop sidebar — fixed */}
+      <aside className="fixed inset-y-0 left-0 w-56 bg-[#161616] border-r border-white/[0.06] flex flex-col z-30 hidden lg:flex">
+        <SidebarContent />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative flex flex-col w-72 h-full bg-[#13161e] z-50 shadow-2xl border-r border-white/6">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="relative flex flex-col w-60 h-full bg-[#161616] border-r border-white/[0.06] z-50 shadow-2xl">
             <button
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5"
+              className="absolute top-4 right-4 text-[#555] hover:text-white transition-colors"
               onClick={() => setSidebarOpen(false)}
             >
               <X size={18} />
             </button>
-            <div className="px-5 py-5 border-b border-white/6">
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">AgendaEstilo</p>
-              <p className="text-sm font-bold text-white mt-0.5">Painel Admin</p>
-            </div>
-            <NavLinks onClick={() => setSidebarOpen(false)} />
-            <div className="px-4 py-4 border-t border-white/6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-200 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={logout}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors"
-              >
-                <LogOut size={15} />
-                Sair
-              </button>
-            </div>
+            <SidebarContent onNav={() => setSidebarOpen(false)} />
           </aside>
         </div>
       )}
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* Main — offset by sidebar on desktop */}
+      <div className="lg:pl-56 min-h-screen flex flex-col">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#13161e] border-b border-white/6 shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg text-gray-400 hover:bg-white/5">
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#161616] border-b border-white/[0.06] sticky top-0 z-20">
+          <button onClick={() => setSidebarOpen(true)} className="text-[#888] hover:text-white transition-colors">
             <Menu size={20} />
           </button>
-          <span className="font-semibold text-gray-200 text-sm">Painel Admin</span>
-          <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm">
+          <span className="font-semibold text-white text-sm">Painel Admin</span>
+          <div className="w-7 h-7 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 text-xs font-bold">
             {user.name.charAt(0).toUpperCase()}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {children}
+        <main className="flex-1">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>

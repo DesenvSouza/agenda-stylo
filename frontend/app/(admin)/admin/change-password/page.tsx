@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApi, ADMIN_STORAGE } from '@/lib/admin-api';
-import { Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, Check } from 'lucide-react';
 
 export default function AdminChangePasswordPage() {
   const router = useRouter();
@@ -39,17 +39,18 @@ export default function AdminChangePasswordPage() {
     }
   }
 
-  const inputClass = 'w-full bg-[#0d0f14] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition';
+  const inputClass =
+    'w-full bg-[#111] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-indigo-500/50 transition-colors';
 
   if (done) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 size={28} className="text-emerald-400" />
+          <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+            <Check size={28} className="text-emerald-400" />
           </div>
           <h2 className="text-lg font-semibold text-white">Senha definida com sucesso!</h2>
-          <p className="text-sm text-gray-500 mt-1">Redirecionando para o painel...</p>
+          <p className="text-sm text-[#666] mt-1">Redirecionando para o painel...</p>
         </div>
       </div>
     );
@@ -58,43 +59,45 @@ export default function AdminChangePasswordPage() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-md">
-        <div className="bg-[#1a1d28] rounded-2xl border border-white/6 p-8 shadow-2xl">
+        <div className="bg-[#1A1A1A] border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
+          {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
               <Lock size={19} className="text-indigo-400" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">Definir senha de acesso</h2>
-              <p className="text-sm text-gray-500">Crie uma senha segura para sua conta</p>
+              <p className="text-xs text-[#666]">Crie uma senha segura para sua conta</p>
             </div>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>
+            <div className="mb-4 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+              {error}
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">Nova senha</label>
+              <label className="block text-xs font-medium text-[#AAA] mb-1.5">Nova senha</label>
               <div className="relative">
                 <input
                   type={showPwd ? 'text' : 'password'}
                   value={pwd}
                   onChange={(e) => setPwd(e.target.value)}
-                  required
-                  minLength={8}
+                  required minLength={8}
                   className={`${inputClass} pr-10`}
                   placeholder="Mínimo 8 caracteres"
                 />
                 <button type="button" onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition">
-                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-[#888] transition-colors">
+                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirmar senha</label>
+              <label className="block text-xs font-medium text-[#AAA] mb-1.5">Confirmar senha</label>
               <input
                 type="password"
                 value={confirm}
@@ -108,7 +111,7 @@ export default function AdminChangePasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50 mt-2"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 mt-2"
             >
               {loading ? 'Salvando...' : 'Salvar senha'}
             </button>
