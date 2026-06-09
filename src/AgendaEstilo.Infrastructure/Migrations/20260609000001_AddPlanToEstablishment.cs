@@ -17,7 +17,7 @@ namespace AgendaEstilo.Infrastructure.Migrations
             // Plano atual do estabelecimento
             migrationBuilder.AddColumn<string>(
                 name: "CurrentPlan",
-                table: "Establishments",
+                table: "establishments",
                 type: "character varying(50)",
                 maxLength: 50,
                 nullable: true);
@@ -25,30 +25,30 @@ namespace AgendaEstilo.Infrastructure.Migrations
             // Data de expiração do plano (null = sem expiração)
             migrationBuilder.AddColumn<DateTime>(
                 name: "PlanExpiresAt",
-                table: "Establishments",
+                table: "establishments",
                 type: "timestamp with time zone",
                 nullable: true);
 
             // Índice para queries de plano no admin
             migrationBuilder.CreateIndex(
-                name: "IX_Establishments_CurrentPlan",
-                table: "Establishments",
+                name: "IX_establishments_CurrentPlan",
+                table: "establishments",
                 column: "CurrentPlan");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_Establishments_CurrentPlan",
-                table: "Establishments");
+                name: "IX_establishments_CurrentPlan",
+                table: "establishments");
 
             migrationBuilder.DropColumn(
                 name: "CurrentPlan",
-                table: "Establishments");
+                table: "establishments");
 
             migrationBuilder.DropColumn(
                 name: "PlanExpiresAt",
-                table: "Establishments");
+                table: "establishments");
         }
     }
 }
