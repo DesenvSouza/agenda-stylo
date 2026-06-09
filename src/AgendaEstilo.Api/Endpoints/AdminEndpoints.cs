@@ -92,6 +92,14 @@ public static class AdminEndpoints
             return Results.NoContent();
         });
 
+        // Primeiro acesso: define senha sem exigir senha atual
+        admin.MapPost("/set-initial-password", async (SetInitialPasswordBody body, HttpContext ctx, IMediator mediator) =>
+        {
+            var userId = Guid.Parse(ctx.User.FindFirst("systemUserId")!.Value);
+            await mediator.Send(new SetInitialPasswordCommand(userId, body.NewPassword));
+            return Results.NoContent();
+        });
+
         // ── Promoter (Admin e Promoter) ──────────────────────────────────────
         var promoter = app.MapGroup("/api/system/promoter")
             .WithTags("PromoterPortal")

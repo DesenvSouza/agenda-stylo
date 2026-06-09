@@ -238,6 +238,9 @@ export const adminApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     getAdminAxios().patch('/api/system/admin/change-password', { currentPassword, newPassword }),
+
+  setInitialPassword: (newPassword: string) =>
+    getAdminAxios().post('/api/system/admin/set-initial-password', { newPassword }),
 };
 
 // ── Promoter endpoints ────────────────────────────────────────────────────────
