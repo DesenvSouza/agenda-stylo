@@ -26,8 +26,8 @@ const BLOCK_TYPES = [
 ];
 
 const BREAK_PRESETS = [
-  { label: "Almoço",   start: "12:00", end: "13:00", icon: UtensilsCrossed },
-  { label: "Lanche",   start: "15:30", end: "16:00", icon: Coffee           },
+  { label: "Almoço", start: "12:00", end: "13:00", icon: UtensilsCrossed },
+  { label: "Lanche", start: "15:30", end: "16:00", icon: Coffee          },
 ];
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
@@ -128,21 +128,10 @@ export default function ProfessionalSchedulePage() {
     );
   }
 
-  function addBreakPreset(dow: number, preset: typeof BREAK_PRESETS[0]) {
-    setSchedule((prev) =>
-      prev.map((d) => {
-        if (d.dayOfWeek !== dow) return d;
-        const exists = d.breaks.some(
-          (b) => b.startTime === preset.start && b.endTime === preset.end
-        );
-        if (exists) return d;
-        return {
-          ...d,
-          breaks: [...d.breaks, { id: newBreakId(), label: preset.label,
-            startTime: preset.start, endTime: preset.end }],
-        };
-      })
-    );
+  // Ao clicar num preset, abre o form pré-preenchido para o usuário ajustar o horário
+  function startBreakWithPreset(dow: number, preset: typeof BREAK_PRESETS[0]) {
+    setAddingBreak(dow);
+    setBreakForm({ label: preset.label, startTime: preset.start, endTime: preset.end });
   }
 
   function addCustomBreak(dow: number) {
@@ -309,7 +298,7 @@ export default function ProfessionalSchedulePage() {
                   breakForm={breakForm}
                   onToggle={() => toggleDay(day.dayOfWeek)}
                   onTimeChange={(f, v) => updateDayTime(day.dayOfWeek, f, v)}
-                  onAddPreset={(p) => addBreakPreset(day.dayOfWeek, p)}
+                  onStartPreset={(p) => startBreakWithPreset(day.dayOfWeek, p)}
                   onStartAddBreak={() => {
                     setAddingBreak(day.dayOfWeek);
                     setBreakForm({ label: "", startTime: "", endTime: "" });
@@ -579,7 +568,7 @@ function DayCard({
   breakForm,
   onToggle,
   onTimeChange,
-  onAddPreset,
+  onStartPreset,
   onStartAddBreak,
   onBreakFormChange,
   onConfirmBreak,
@@ -591,7 +580,7 @@ function DayCard({
   breakForm: { label: string; startTime: string; endTime: string };
   onToggle: () => void;
   onTimeChange: (field: "startTime" | "endTime", value: string) => void;
-  onAddPreset: (preset: typeof BREAK_PRESETS[0]) => void;
+  onStartPreset: (preset: typeof BREAK_PRESETS[0]) => void;
   onStartAddBreak: () => void;
   onBreakFormChange: (field: string, value: string) => void;
   onConfirmBreak: () => void;
@@ -693,18 +682,20 @@ function DayCard({
               Pausas
             </p>
 
-            {/* Presets rápidos */}
-            <div className="flex gap-2 mb-2">
+            {/* Atalhos de pausa — clique abre formulário pré-preenchido */}
+            <div className="flex gap-2 mb-2 flex-wrap">
               {BREAK_PRESETS.map((p) => {
                 const Icon = p.icon;
+                // Considera "já adicionado" se existir uma pausa com o mesmo label
                 const already = day.breaks.some(
-                  (b) => b.startTime === p.start && b.endTime === p.end
+                  (b) => b.label.toLowerCase() === p.label.toLowerCase()
                 );
                 return (
                   <button
                     key={p.label}
-                    onClick={() => onAddPreset(p)}
+                    onClick={() => !already && onStartPreset(p)}
                     disabled={already}
+                    title={already ? "Pausa já adicionada" : `Adicionar ${p.label} (horário ajustável)`}
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all",
                       already
@@ -714,7 +705,6 @@ function DayCard({
                   >
                     <Icon size={12} />
                     {p.label}
-                    <span className="text-[10px] opacity-70">{p.start}</span>
                   </button>
                 );
               })}
@@ -742,41 +732,51 @@ function DayCard({
               </div>
             )}
 
-            {/* Formulário de pausa personalizada */}
+            {/* Formulário de pausa — abre via preset ou botão "+ Pausa personalizada" */}
             {isAddingBreakHere ? (
-              <div className="rounded-xl border border-black/10 bg-white p-3 space-y-2">
-                <input
-                  type="text"
-                  placeholder="Nome da pausa (ex: Lanche)"
-                  value={breakForm.label}
-                  onChange={(e) => onBreakFormChange("label", e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-black/10 text-xs focus:outline-none focus:border-[#1B1B1B] transition-colors"
-                />
-                <div className="flex gap-2 items-center">
+              <div className="rounded-xl border border-[#EF9F27]/30 bg-[#FAFAF8] p-3 space-y-2.5">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9B9B9B] uppercase tracking-widest mb-1">
+                    Nome
+                  </label>
                   <input
-                    type="time"
-                    value={breakForm.startTime}
-                    onChange={(e) => onBreakFormChange("startTime", e.target.value)}
-                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-black/10 text-xs focus:outline-none focus:border-[#1B1B1B] transition-colors"
-                  />
-                  <span className="text-xs text-[#9B9B9B]">→</span>
-                  <input
-                    type="time"
-                    value={breakForm.endTime}
-                    onChange={(e) => onBreakFormChange("endTime", e.target.value)}
-                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-black/10 text-xs focus:outline-none focus:border-[#1B1B1B] transition-colors"
+                    type="text"
+                    placeholder="Ex: Almoço, Lanche, Descanso..."
+                    value={breakForm.label}
+                    onChange={(e) => onBreakFormChange("label", e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-black/10 bg-white text-xs focus:outline-none focus:border-[#EF9F27] transition-colors"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9B9B9B] uppercase tracking-widest mb-1">
+                    Horário
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="time"
+                      value={breakForm.startTime}
+                      onChange={(e) => onBreakFormChange("startTime", e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-black/10 bg-white text-xs focus:outline-none focus:border-[#EF9F27] transition-colors"
+                    />
+                    <span className="text-xs text-[#9B9B9B] shrink-0">→</span>
+                    <input
+                      type="time"
+                      value={breakForm.endTime}
+                      onChange={(e) => onBreakFormChange("endTime", e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-black/10 bg-white text-xs focus:outline-none focus:border-[#EF9F27] transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-0.5">
                   <button
                     onClick={onConfirmBreak}
-                    className="flex-1 py-1.5 bg-[#1B1B1B] text-white text-xs font-medium rounded-lg hover:bg-[#333] transition-colors"
+                    className="flex-1 py-1.5 bg-[#1B1B1B] text-white text-xs font-semibold rounded-lg hover:bg-[#333] transition-colors"
                   >
-                    Adicionar
+                    Adicionar pausa
                   </button>
                   <button
                     onClick={onCancelBreak}
-                    className="px-3 py-1.5 text-xs text-[#6B6B6B] hover:text-[#1B1B1B] transition-colors"
+                    className="px-3 py-1.5 text-xs text-[#6B6B6B] hover:text-[#1B1B1B] transition-colors rounded-lg hover:bg-black/5"
                   >
                     Cancelar
                   </button>
