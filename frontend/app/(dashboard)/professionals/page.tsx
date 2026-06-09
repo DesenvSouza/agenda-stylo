@@ -4,17 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Scissors, Power, Trash2, Pencil, ChevronDown, ChevronUp,
-  Loader2, Camera, CheckSquare, CalendarClock, KeyRound, ShieldOff, Copy, Check,
+  Loader2, Camera, CheckSquare, CalendarClock, KeyRound, ShieldOff, Copy, Check, AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { professionalsApi, servicesApi, establishmentsApi, ProfessionalDto, ActivateAccessResult } from "@/lib/api";
+import { professionalsApi, servicesApi, establishmentsApi, billingApi, ProfessionalDto, ActivateAccessResult, PlanStatusDto } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDuration, formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+const UNLIMITED = 2147483647;
 
 interface Service {
   id: string;
@@ -159,6 +161,9 @@ export default function ProfessionalsPage() {
   const [credentials, setCredentials] = useState<ActivateAccessResult | null>(null);
   const [allowProfessionalAccess, setAllowProfessionalAccess] = useState(false);
 
+  // Plano
+  const [planStatus, setPlanStatus] = useState<PlanStatusDto | null>(null);
+
   // ── Carga inicial ────────────────────────────────────────────────────────
   const reload = async () => {
     if (!user) return;
@@ -176,11 +181,13 @@ export default function ProfessionalsPage() {
       professionalsApi.list(user.establishmentId),
       servicesApi.list(user.establishmentId),
       establishmentsApi.getProfessionalAccess(),
+      billingApi.getStatus().catch(() => null),
     ])
-      .then(([proRes, svcRes, accessRes]) => {
+      .then(([proRes, svcRes, accessRes, planRes]) => {
         setProfessionals(proRes.data);
         setAllServices(svcRes.data);
         setAllowProfessionalAccess(accessRes.data.allowed);
+        if (planRes) setPlanStatus(planRes.data);
       })
       .finally(() => setLoading(false));
   }, [user]);
@@ -481,6 +488,11 @@ export default function ProfessionalsPage() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const profLimit = planStatus?.professionalsLimit ?? UNLIMITED;
+  const profUsed  = planStatus?.professionalsUsed ?? professionals.length;
+  const atProfLimit = profLimit < UNLIMITED && profUsed >= profLimit;
+  const nearProfLimit = profLimit < UNLIMITED && !atProfLimit && profUsed >= profLimit - 1;
+
   return (
     <div>
       {/* Modal de credenciais */}
@@ -492,7 +504,7 @@ export default function ProfessionalsPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-[#1B1B1B]">Profissionais</h1>
           <p className="text-sm text-[#9B9B9B] mt-0.5">
@@ -501,13 +513,43 @@ export default function ProfessionalsPage() {
         </div>
         <Button
           variant="accent"
-          onClick={() => { setShowForm((v) => !v); }}
+          onClick={() => { if (!atProfLimit) setShowForm((v) => !v); }}
+          disabled={atProfLimit}
           className="gap-2"
         >
           <Plus size={18} />
           Adicionar
         </Button>
       </div>
+
+      {/* Banner limite atingido */}
+      {atProfLimit && (
+        <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-800 mb-5">
+          <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-500" />
+          <div>
+            <p className="font-semibold">Limite de profissionais atingido</p>
+            <p className="text-rose-700 mt-0.5 text-xs">
+              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {profLimit} profissional{profLimit !== 1 ? "is" : ""}.
+              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para adicionar mais.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner próximo do limite */}
+      {nearProfLimit && (
+        <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 mb-5">
+          <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+          <div>
+            <p className="font-semibold">Próximo do limite</p>
+            <p className="text-amber-700 mt-0.5 text-xs">
+              Você tem {profUsed} de {profLimit} profissionais no plano <strong>{planStatus?.currentPlanLabel}</strong>.
+              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
+            </p>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Formulário de criação ── */}
       {showForm && (

@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Scissors, Power, Trash2, Pencil, ChevronDown, ChevronUp, Loader2, Percent, DollarSign } from "lucide-react";
+import { Plus, Scissors, Power, Trash2, Pencil, ChevronDown, ChevronUp, Loader2, Percent, DollarSign, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { servicesApi } from "@/lib/api";
+import { servicesApi, billingApi, PlanStatusDto } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatCurrency, formatDuration, cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+const UNLIMITED = 2147483647;
 
 // CommissionType enum (espelha o backend: 0=None, 1=Percentage, 2=Fixed)
 type CommissionType = 0 | 1 | 2;
@@ -224,6 +226,8 @@ export default function ServicesPage() {
 
   function cancelEdit() { setEditId(null); }
 
+  const [planStatus, setPlanStatus] = useState<PlanStatusDto | null>(null);
+
   const reload = async () => {
     if (!user) return;
     const res = await servicesApi.list(user.establishmentId);
@@ -232,9 +236,14 @@ export default function ServicesPage() {
 
   useEffect(() => {
     if (!user) return;
-    servicesApi
-      .list(user.establishmentId)
-      .then((res) => setServices(res.data))
+    Promise.all([
+      servicesApi.list(user.establishmentId),
+      billingApi.getStatus().catch(() => null),
+    ])
+      .then(([svcRes, planRes]) => {
+        setServices(svcRes.data);
+        if (planRes) setPlanStatus(planRes.data);
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -332,14 +341,53 @@ export default function ServicesPage() {
     }
   }
 
+  const svcLimit = planStatus?.servicesLimit ?? UNLIMITED;
+  const svcUsed  = planStatus?.servicesUsed ?? services.length;
+  const atSvcLimit   = svcLimit < UNLIMITED && svcUsed >= svcLimit;
+  const nearSvcLimit = svcLimit < UNLIMITED && !atSvcLimit && svcUsed >= svcLimit - 1;
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-[#1B1B1B]">Serviços</h1>
-        <Button variant="accent" onClick={() => setShowForm((v) => !v)} className="gap-2">
+        <Button
+          variant="accent"
+          onClick={() => { if (!atSvcLimit) setShowForm((v) => !v); }}
+          disabled={atSvcLimit}
+          className="gap-2"
+        >
           <Plus size={18} /> Adicionar
         </Button>
       </div>
+
+      {/* Banner limite atingido */}
+      {atSvcLimit && (
+        <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-800 mb-5">
+          <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-500" />
+          <div>
+            <p className="font-semibold">Limite de serviços atingido</p>
+            <p className="text-rose-700 mt-0.5 text-xs">
+              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {svcLimit} serviço{svcLimit !== 1 ? "s" : ""}.
+              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para adicionar mais.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner próximo do limite */}
+      {nearSvcLimit && (
+        <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 mb-5">
+          <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+          <div>
+            <p className="font-semibold">Próximo do limite</p>
+            <p className="text-amber-700 mt-0.5 text-xs">
+              Você tem {svcUsed} de {svcLimit} serviços no plano <strong>{planStatus?.currentPlanLabel}</strong>.
+              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
+            </p>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Formulário de cadastro ── */}
       {showForm && (

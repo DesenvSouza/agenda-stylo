@@ -25,6 +25,12 @@ public class Establishment : BaseEntity
     /// <summary>Código do promotor usado no cadastro (indica quem indicou).</summary>
     public string? ReferralCode { get; set; }
 
+    /// <summary>Plano atual contratado ("Basico" | "Profissional"). Null = sem plano ativo.</summary>
+    public string? CurrentPlan { get; set; }
+
+    /// <summary>Data de expiração do plano atual. Null = não expira (usado para ativações manuais).</summary>
+    public DateTime? PlanExpiresAt { get; set; }
+
     public ICollection<Professional> Professionals { get; set; } = new List<Professional>();
     public ICollection<PlanSubscriptionPayment> PlanPayments { get; set; } = new List<PlanSubscriptionPayment>();
     public ICollection<PromoterConversion> PromoterConversions { get; set; } = new List<PromoterConversion>();

@@ -286,3 +286,30 @@ export const publicApi = {
   getEstablishment: (slug: string) =>
     api.get(`/api/public/establishments/${slug}`),
 };
+
+// ── Billing / Planos ─────────────────────────────────────────────────────────
+export type AvailablePlanDto = {
+  id: string;
+  label: string;
+  price: number;
+  professionalsLimit: number;  // int.MaxValue = ilimitado
+  servicesLimit: number;
+  isCurrent: boolean;
+};
+
+export type PlanStatusDto = {
+  currentPlan: string | null;
+  currentPlanLabel: string;
+  currentPrice: number;
+  isActive: boolean;
+  expiresAt: string | null;
+  professionalsUsed: number;
+  professionalsLimit: number;
+  servicesUsed: number;
+  servicesLimit: number;
+  availablePlans: AvailablePlanDto[];
+};
+
+export const billingApi = {
+  getStatus: () => api.get<PlanStatusDto>("/api/billing/status"),
+};

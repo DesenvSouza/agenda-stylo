@@ -1,6 +1,7 @@
 using AgendaEstilo.Application.Admin.Commands;
 using AgendaEstilo.Application.Admin.Queries;
 using MediatR;
+using AgendaEstilo.Domain.Constants;
 
 namespace AgendaEstilo.Api.Endpoints;
 
@@ -84,6 +85,29 @@ public static class AdminEndpoints
             return Results.Ok(new { isActive });
         });
 
+        // Ativar plano para um estabelecimento (ativação manual pelo admin)
+        admin.MapPost("/establishments/{id:guid}/activate-plan", async (
+            Guid id, ActivatePlanBody body, IMediator mediator) =>
+        {
+            var result = await mediator.Send(new ActivatePlanCommand(id, body.Plan, body.ExternalPaymentId));
+            return Results.Ok(result);
+        });
+
+        // Planos disponíveis (para o admin visualizar)
+        admin.MapGet("/plans", () =>
+        {
+            var plans = new[]
+            {
+                new { id = PlanConstants.Basico,       label = "Básico",       price = PlanConstants.PrecoBasico,
+                      profissionaisLimit = PlanConstants.LimiteProfissionaisBasico,
+                      servicosLimit      = PlanConstants.LimiteServicosBasico },
+                new { id = PlanConstants.Profissional, label = "Profissional", price = PlanConstants.PrecoProfissional,
+                      profissionaisLimit = PlanConstants.LimiteIlimitado,
+                      servicosLimit      = PlanConstants.LimiteIlimitado },
+            };
+            return Results.Ok(plans);
+        });
+
         // Senha do admin
         admin.MapPatch("/change-password", async (ChangePasswordBody body, HttpContext ctx, IMediator mediator) =>
         {
@@ -130,4 +154,5 @@ public static class AdminEndpoints
     private record SetCommissionBody(decimal CommissionPercent);
     private record ChangePasswordBody(string CurrentPassword, string NewPassword);
     private record SetInitialPasswordBody(string NewPassword);
+    private record ActivatePlanBody(string Plan, string? ExternalPaymentId = null);
 }

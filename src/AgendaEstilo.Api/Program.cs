@@ -133,6 +133,7 @@ app.MapNotificationSettingsEndpoints();
 app.MapEstablishmentEndpoints();
 app.MapProfessionalPortalEndpoints();
 app.MapAdminEndpoints();
+app.MapBillingEndpoints();
 
 // ── Seed: garante que existe ao menos 1 admin no banco ───────────────────────
 using (var scope = app.Services.CreateScope())

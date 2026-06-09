@@ -1,4 +1,5 @@
 using AgendaEstilo.Application.Common;
+using AgendaEstilo.Domain.Constants;
 using AgendaEstilo.Domain.Enums;
 using AgendaEstilo.Domain.Interfaces;
 using FluentValidation;
@@ -46,12 +47,38 @@ public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand,
 
         if (request.Id.HasValue)
         {
+            // Edição — sem verificação de limite
             service = await _db.Services
                 .FirstOrDefaultAsync(s => s.Id == request.Id, cancellationToken)
                 ?? throw new KeyNotFoundException("Serviço não encontrado.");
         }
         else
         {
+            // Criação — verificar limite do plano
+            var establishment = await _db.Establishments
+                .IgnoreQueryFilters()
+                .Where(e => e.Id == request.EstablishmentId && !e.IsDeleted)
+                .Select(e => new { e.CurrentPlan })
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw new KeyNotFoundException("Estabelecimento não encontrado.");
+
+            var limite = PlanConstants.GetLimiteServicos(establishment.CurrentPlan);
+
+            if (limite != PlanConstants.LimiteIlimitado)
+            {
+                var count = await _db.Services
+                    .CountAsync(s => s.EstablishmentId == request.EstablishmentId, cancellationToken);
+
+                if (count >= limite)
+                {
+                    var planLabel = establishment.CurrentPlan == PlanConstants.Profissional
+                        ? "Profissional" : "Básico";
+                    throw new InvalidOperationException(
+                        $"Limite de {limite} serviço(s) atingido para o plano {planLabel}. " +
+                        $"Faça upgrade para o plano Profissional para adicionar mais.");
+                }
+            }
+
             service = new Domain.Entities.Service
             {
                 TenantId = _tenantService.TenantId,
@@ -59,13 +86,14 @@ public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand,
             };
             _db.Services.Add(service);
         }
-        service.Name = request.Name;
-        service.Category = request.Category;
+
+        service.Name            = request.Name;
+        service.Category        = request.Category;
         service.DurationMinutes = request.DurationMinutes;
-        service.Price = request.Price;
-        service.Description = request.Description;
-        service.Order = request.Order;
-        service.CommissionType = request.CommissionType;
+        service.Price           = request.Price;
+        service.Description     = request.Description;
+        service.Order           = request.Order;
+        service.CommissionType  = request.CommissionType;
         service.CommissionValue = Math.Max(0, request.CommissionValue);
 
         await _db.SaveChangesAsync(cancellationToken);

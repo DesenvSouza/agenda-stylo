@@ -241,6 +241,21 @@ export const adminApi = {
 
   setInitialPassword: (newPassword: string) =>
     getAdminAxios().post('/api/system/admin/set-initial-password', { newPassword }),
+
+  activatePlan: (establishmentId: string, plan: string, externalPaymentId?: string) =>
+    getAdminAxios()
+      .post<{ paymentId: string; plan: string; amount: number }>(
+        `/api/system/admin/establishments/${establishmentId}/activate-plan`,
+        { plan, externalPaymentId }
+      )
+      .then((r) => r.data),
+
+  getPlans: () =>
+    getAdminAxios()
+      .get<{ id: string; label: string; price: number; profissionaisLimit: number; servicosLimit: number }[]>(
+        '/api/system/admin/plans'
+      )
+      .then((r) => r.data),
 };
 
 // ── Promoter endpoints ────────────────────────────────────────────────────────
