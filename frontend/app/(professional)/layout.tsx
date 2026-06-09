@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import {
-  Calendar, Home, User, BarChart2, LogOut, ChevronRight,
+  Calendar, Home, User, BarChart2, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -136,21 +136,5 @@ export default function ProfessionalLayout({ children }: { children: React.React
         </div>
       </nav>
     </div>
-  );
-}
-
-// Componente auxiliar para links de settings no mobile
-export function SettingLink({ href, label, description }: { href: string; label: string; description: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between px-4 py-3.5 hover:bg-[#F5F5F5] transition-colors"
-    >
-      <div>
-        <p className="text-sm font-medium text-[#1B1B1B]">{label}</p>
-        <p className="text-xs text-[#9B9B9B] mt-0.5">{description}</p>
-      </div>
-      <ChevronRight size={16} className="text-[#C4C4C4]" />
-    </Link>
   );
 }

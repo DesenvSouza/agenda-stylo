@@ -1,12 +1,8 @@
-'use client';
-
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Home, ArrowLeft } from 'lucide-react';
+import { Home } from 'lucide-react';
+import BackButton from './_components/BackButton';
 
 export default function NotFound() {
-  const router = useRouter();
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="text-center max-w-md">
@@ -50,13 +46,7 @@ export default function NotFound() {
             <Home size={16} />
             Ir para o início
           </Link>
-          <button
-            onClick={() => router.back()}
-            className="flex items-center justify-center gap-2 border hover:bg-gray-50 text-gray-700 rounded-lg px-5 py-2.5 text-sm font-medium transition"
-          >
-            <ArrowLeft size={16} />
-            Voltar
-          </button>
+          <BackButton />
         </div>
       </div>
     </div>
