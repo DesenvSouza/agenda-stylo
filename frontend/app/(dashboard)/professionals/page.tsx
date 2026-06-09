@@ -6,6 +6,7 @@ import {
   Plus, Scissors, Power, Trash2, Pencil, ChevronDown, ChevronUp,
   Loader2, Camera, CheckSquare, CalendarClock, KeyRound, ShieldOff, Copy, Check, AlertCircle,
 } from "lucide-react";
+import { AxiosError } from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -237,9 +238,16 @@ export default function ProfessionalsPage() {
       setFormPhoto(null);
       setFormPhotoPreview(null);
       setFormServiceIds([]);
-      toast.success("Profissional cadastrado com sucesso");
-    } catch {
-      toast.error("Erro ao salvar profissional");
+
+      // Aviso de plano quando criado inativo por limite
+      if (res.data.planWarning) {
+        toast.warning(res.data.planWarning);
+      } else {
+        toast.success("Profissional cadastrado com sucesso");
+      }
+    } catch (err) {
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail;
+      toast.error(detail ?? "Erro ao salvar profissional");
     } finally {
       setSaving(false);
     }
@@ -360,13 +368,16 @@ export default function ProfessionalsPage() {
   async function handleToggleActive(id: string, currentActive: boolean) {
     setBusyId(id);
     try {
-      await professionalsApi.toggleActive(id);
+      const res = await professionalsApi.toggleActive(id);
+      // Usa o valor retornado pelo servidor (fonte da verdade)
       setProfessionals((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
+        prev.map((p) => (p.id === id ? { ...p, isActive: res.data.isActive } : p))
       );
-      toast.success(currentActive ? "Profissional desativado" : "Profissional ativado");
-    } catch {
-      toast.error("Erro ao alterar status");
+      toast.success(res.data.isActive ? "Profissional ativado" : "Profissional desativado");
+    } catch (err) {
+      // Exibe mensagem específica do backend (ex: "Limite de 2 profissionais atingido...")
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail;
+      toast.error(detail ?? "Erro ao alterar status do profissional");
     } finally {
       setBusyId(null);
     }
@@ -488,10 +499,12 @@ export default function ProfessionalsPage() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  const profLimit = planStatus?.professionalsLimit ?? UNLIMITED;
-  const profUsed  = planStatus?.professionalsUsed ?? professionals.length;
-  const atProfLimit = profLimit < UNLIMITED && profUsed >= profLimit;
-  const nearProfLimit = profLimit < UNLIMITED && !atProfLimit && profUsed >= profLimit - 1;
+  const profLimit      = planStatus?.professionalsLimit ?? UNLIMITED;
+  // O limite é sobre profissionais ATIVOS — usar contagem local de ativos como fallback
+  const activeProfsCount = professionals.filter(p => p.isActive).length;
+  const profUsed       = planStatus?.professionalsUsed ?? activeProfsCount;
+  const atProfLimit    = profLimit < UNLIMITED && profUsed >= profLimit;
+  const nearProfLimit  = profLimit < UNLIMITED && !atProfLimit && profUsed >= profLimit - 1;
 
   return (
     <div>
@@ -513,8 +526,7 @@ export default function ProfessionalsPage() {
         </div>
         <Button
           variant="accent"
-          onClick={() => { if (!atProfLimit) setShowForm((v) => !v); }}
-          disabled={atProfLimit}
+          onClick={() => setShowForm((v) => !v)}
           className="gap-2"
         >
           <Plus size={18} />
@@ -527,10 +539,11 @@ export default function ProfessionalsPage() {
         <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-800 mb-5">
           <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-500" />
           <div>
-            <p className="font-semibold">Limite de profissionais atingido</p>
+            <p className="font-semibold">Limite de profissionais ativos atingido</p>
             <p className="text-rose-700 mt-0.5 text-xs">
-              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {profLimit} profissional{profLimit !== 1 ? "is" : ""}.
-              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para adicionar mais.
+              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {profLimit} profissional{profLimit !== 1 ? "is" : ""} ativo{profLimit !== 1 ? "s" : ""}.
+              Novos profissionais serão criados como inativos.{" "}
+              <a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para remover o limite.
             </p>
           </div>
         </div>
@@ -541,10 +554,10 @@ export default function ProfessionalsPage() {
         <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 mb-5">
           <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
           <div>
-            <p className="font-semibold">Próximo do limite</p>
+            <p className="font-semibold">Próximo do limite de profissionais ativos</p>
             <p className="text-amber-700 mt-0.5 text-xs">
-              Você tem {profUsed} de {profLimit} profissionais no plano <strong>{planStatus?.currentPlanLabel}</strong>.
-              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
+              Você tem {profUsed} de {profLimit} profissionais ativos no plano <strong>{planStatus?.currentPlanLabel}</strong>.{" "}
+              <a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
             </p>
           </div>
         </div>

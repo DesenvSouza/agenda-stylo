@@ -19,14 +19,24 @@ public static class ServiceEndpoints
 
         group.MapPost("/", async (UpsertServiceCommand command, IMediator mediator) =>
         {
-            var id = await mediator.Send(command);
-            return Results.Ok(new { id });
+            var result = await mediator.Send(command);
+            return Results.Ok(new
+            {
+                id          = result.Id,
+                isActive    = result.IsActive,
+                planWarning = result.PlanWarning
+            });
         });
 
         group.MapPut("/{id:guid}", async (Guid id, UpsertServiceCommand command, IMediator mediator) =>
         {
             var result = await mediator.Send(command with { Id = id });
-            return Results.Ok(new { id = result });
+            return Results.Ok(new
+            {
+                id          = result.Id,
+                isActive    = result.IsActive,
+                planWarning = result.PlanWarning
+            });
         });
 
         group.MapPatch("/{id:guid}/toggle-active", async (Guid id, IMediator mediator) =>

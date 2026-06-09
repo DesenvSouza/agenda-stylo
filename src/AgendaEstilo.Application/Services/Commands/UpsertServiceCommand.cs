@@ -18,7 +18,14 @@ public record UpsertServiceCommand(
     string? Description,
     int Order = 0,
     CommissionType CommissionType = CommissionType.None,
-    decimal CommissionValue = 0) : IRequest<Guid>;
+    decimal CommissionValue = 0) : IRequest<UpsertServiceResult>;
+
+/// <summary>
+/// Resultado do upsert.
+/// Se <see cref="IsActive"/> for false e <see cref="PlanWarning"/> não for null,
+/// o serviço foi criado como inativo porque o limite do plano foi atingido.
+/// </summary>
+public record UpsertServiceResult(Guid Id, bool IsActive, string? PlanWarning);
 
 public class UpsertServiceCommandValidator : AbstractValidator<UpsertServiceCommand>
 {
@@ -30,7 +37,7 @@ public class UpsertServiceCommandValidator : AbstractValidator<UpsertServiceComm
     }
 }
 
-public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand, Guid>
+public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand, UpsertServiceResult>
 {
     private readonly IAppDbContext _db;
     private readonly ITenantService _tenantService;
@@ -41,20 +48,22 @@ public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand,
         _tenantService = tenantService;
     }
 
-    public async Task<Guid> Handle(UpsertServiceCommand request, CancellationToken cancellationToken)
+    public async Task<UpsertServiceResult> Handle(UpsertServiceCommand request, CancellationToken cancellationToken)
     {
         Domain.Entities.Service service;
+        string? planWarning = null;
 
         if (request.Id.HasValue)
         {
-            // Edição — sem verificação de limite
+            // ── Edição ─────────────────────────────────────────────────────────
+            // Não altera IsActive nem verifica limite
             service = await _db.Services
                 .FirstOrDefaultAsync(s => s.Id == request.Id, cancellationToken)
                 ?? throw new KeyNotFoundException("Serviço não encontrado.");
         }
         else
         {
-            // Criação — verificar limite do plano
+            // ── Criação ────────────────────────────────────────────────────────
             var establishment = await _db.Establishments
                 .IgnoreQueryFilters()
                 .Where(e => e.Id == request.EstablishmentId && !e.IsDeleted)
@@ -64,25 +73,29 @@ public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand,
 
             var limite = PlanConstants.GetLimiteServicos(establishment.CurrentPlan);
 
+            // Conta apenas serviços ATIVOS (o limite é de ativos, não de total)
+            bool criarInativo = false;
             if (limite != PlanConstants.LimiteIlimitado)
             {
-                var count = await _db.Services
-                    .CountAsync(s => s.EstablishmentId == request.EstablishmentId, cancellationToken);
+                var activeCount = await _db.Services
+                    .CountAsync(s => s.EstablishmentId == request.EstablishmentId && s.IsActive, cancellationToken);
 
-                if (count >= limite)
+                if (activeCount >= limite)
                 {
+                    criarInativo = true;
                     var planLabel = establishment.CurrentPlan == PlanConstants.Profissional
                         ? "Profissional" : "Básico";
-                    throw new InvalidOperationException(
-                        $"Limite de {limite} serviço(s) atingido para o plano {planLabel}. " +
-                        $"Faça upgrade para o plano Profissional para adicionar mais.");
+                    planWarning =
+                        $"Serviço criado como inativo — limite de {limite} serviço(s) ativo(s) atingido " +
+                        $"no plano {planLabel}. Desative outro serviço ou faça upgrade do plano.";
                 }
             }
 
             service = new Domain.Entities.Service
             {
-                TenantId = _tenantService.TenantId,
+                TenantId        = _tenantService.TenantId,
                 EstablishmentId = request.EstablishmentId,
+                IsActive        = !criarInativo,   // inativo se no limite
             };
             _db.Services.Add(service);
         }
@@ -97,6 +110,6 @@ public class UpsertServiceCommandHandler : IRequestHandler<UpsertServiceCommand,
         service.CommissionValue = Math.Max(0, request.CommissionValue);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return service.Id;
+        return new UpsertServiceResult(service.Id, service.IsActive, planWarning);
     }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Scissors, Power, Trash2, Pencil, ChevronDown, ChevronUp, Loader2, Percent, DollarSign, AlertCircle } from "lucide-react";
+import { AxiosError } from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -269,7 +270,7 @@ export default function ServicesPage() {
     if (!user) return;
     setSaving(true);
     try {
-      await servicesApi.upsert({
+      const res = await servicesApi.upsert({
         ...form,
         establishmentId: user.establishmentId,
         durationMinutes: Number(form.durationMinutes),
@@ -283,9 +284,15 @@ export default function ServicesPage() {
       setForm({ name: "", category: "", durationMinutes: 30, price: 0, description: "", commissionType: 0, commissionValue: 0 });
       price.reset(0);
       commFixed.reset(0);
-      toast.success("Serviço cadastrado com sucesso");
-    } catch {
-      toast.error("Erro ao salvar serviço");
+
+      if (res.data.planWarning) {
+        toast.warning(res.data.planWarning);
+      } else {
+        toast.success("Serviço cadastrado com sucesso");
+      }
+    } catch (err) {
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail;
+      toast.error(detail ?? "Erro ao salvar serviço");
     } finally {
       setSaving(false);
     }
@@ -315,13 +322,16 @@ export default function ServicesPage() {
   async function handleToggleActive(id: string, currentActive: boolean) {
     setBusyId(id);
     try {
-      await servicesApi.toggleActive(id);
+      const res = await servicesApi.toggleActive(id);
+      // Usa o valor retornado pelo servidor (fonte da verdade)
       setServices((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
+        prev.map((s) => (s.id === id ? { ...s, isActive: res.data.isActive } : s))
       );
-      toast.success(currentActive ? "Serviço desativado" : "Serviço ativado");
-    } catch {
-      toast.error("Erro ao alterar status");
+      toast.success(res.data.isActive ? "Serviço ativado" : "Serviço desativado");
+    } catch (err) {
+      // Exibe mensagem específica do backend (ex: "Limite de 5 serviços atingido...")
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail;
+      toast.error(detail ?? "Erro ao alterar status do serviço");
     } finally {
       setBusyId(null);
     }
@@ -342,9 +352,11 @@ export default function ServicesPage() {
   }
 
   const svcLimit = planStatus?.servicesLimit ?? UNLIMITED;
-  const svcUsed  = planStatus?.servicesUsed ?? services.length;
-  const atSvcLimit   = svcLimit < UNLIMITED && svcUsed >= svcLimit;
-  const nearSvcLimit = svcLimit < UNLIMITED && !atSvcLimit && svcUsed >= svcLimit - 1;
+  // O limite é sobre serviços ATIVOS — usar contagem local de ativos como fallback
+  const activeSvcCount = services.filter(s => s.isActive).length;
+  const svcUsed        = planStatus?.servicesUsed ?? activeSvcCount;
+  const atSvcLimit     = svcLimit < UNLIMITED && svcUsed >= svcLimit;
+  const nearSvcLimit   = svcLimit < UNLIMITED && !atSvcLimit && svcUsed >= svcLimit - 1;
 
   return (
     <div>
@@ -352,8 +364,7 @@ export default function ServicesPage() {
         <h1 className="text-2xl font-bold text-[#1B1B1B]">Serviços</h1>
         <Button
           variant="accent"
-          onClick={() => { if (!atSvcLimit) setShowForm((v) => !v); }}
-          disabled={atSvcLimit}
+          onClick={() => setShowForm((v) => !v)}
           className="gap-2"
         >
           <Plus size={18} /> Adicionar
@@ -365,10 +376,11 @@ export default function ServicesPage() {
         <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-rose-200 bg-rose-50 text-sm text-rose-800 mb-5">
           <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-500" />
           <div>
-            <p className="font-semibold">Limite de serviços atingido</p>
+            <p className="font-semibold">Limite de serviços ativos atingido</p>
             <p className="text-rose-700 mt-0.5 text-xs">
-              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {svcLimit} serviço{svcLimit !== 1 ? "s" : ""}.
-              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para adicionar mais.
+              Seu plano <strong>{planStatus?.currentPlanLabel}</strong> permite até {svcLimit} serviço{svcLimit !== 1 ? "s" : ""} ativo{svcLimit !== 1 ? "s" : ""}.
+              Novos serviços serão criados como inativos.{" "}
+              <a href="/dashboard/settings/plans" className="underline hover:text-rose-900">Faça upgrade</a> para remover o limite.
             </p>
           </div>
         </div>
@@ -379,10 +391,10 @@ export default function ServicesPage() {
         <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800 mb-5">
           <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
           <div>
-            <p className="font-semibold">Próximo do limite</p>
+            <p className="font-semibold">Próximo do limite de serviços ativos</p>
             <p className="text-amber-700 mt-0.5 text-xs">
-              Você tem {svcUsed} de {svcLimit} serviços no plano <strong>{planStatus?.currentPlanLabel}</strong>.
-              {" "}<a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
+              Você tem {svcUsed} de {svcLimit} serviços ativos no plano <strong>{planStatus?.currentPlanLabel}</strong>.{" "}
+              <a href="/dashboard/settings/plans" className="underline hover:text-amber-900">Ver planos</a>.
             </p>
           </div>
         </div>

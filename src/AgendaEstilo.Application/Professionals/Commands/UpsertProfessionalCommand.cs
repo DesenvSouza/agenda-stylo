@@ -16,7 +16,14 @@ public record UpsertProfessionalCommand(
     string? Bio,
     string? Cpf,
     string? WhatsApp,
-    int Order = 0) : IRequest<Guid>;
+    int Order = 0) : IRequest<UpsertProfessionalResult>;
+
+/// <summary>
+/// Resultado do upsert.
+/// Se <see cref="IsActive"/> for false e <see cref="PlanWarning"/> não for null,
+/// o profissional foi criado como inativo porque o limite do plano foi atingido.
+/// </summary>
+public record UpsertProfessionalResult(Guid Id, bool IsActive, string? PlanWarning);
 
 public class UpsertProfessionalCommandValidator : AbstractValidator<UpsertProfessionalCommand>
 {
@@ -27,7 +34,7 @@ public class UpsertProfessionalCommandValidator : AbstractValidator<UpsertProfes
     }
 }
 
-public class UpsertProfessionalCommandHandler : IRequestHandler<UpsertProfessionalCommand, Guid>
+public class UpsertProfessionalCommandHandler : IRequestHandler<UpsertProfessionalCommand, UpsertProfessionalResult>
 {
     private readonly IAppDbContext _db;
     private readonly ITenantService _tenantService;
@@ -38,20 +45,22 @@ public class UpsertProfessionalCommandHandler : IRequestHandler<UpsertProfession
         _tenantService = tenantService;
     }
 
-    public async Task<Guid> Handle(UpsertProfessionalCommand request, CancellationToken cancellationToken)
+    public async Task<UpsertProfessionalResult> Handle(UpsertProfessionalCommand request, CancellationToken cancellationToken)
     {
         Professional professional;
+        string? planWarning = null;
 
         if (request.Id.HasValue)
         {
-            // Edição — sem verificação de limite
+            // ── Edição ─────────────────────────────────────────────────────────
+            // Não altera IsActive nem verifica limite — apenas atualiza dados
             professional = await _db.Professionals
                 .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken)
                 ?? throw new KeyNotFoundException("Profissional não encontrado.");
         }
         else
         {
-            // Criação — verificar limite do plano
+            // ── Criação ────────────────────────────────────────────────────────
             var establishment = await _db.Establishments
                 .IgnoreQueryFilters()
                 .Where(e => e.Id == request.EstablishmentId && !e.IsDeleted)
@@ -61,25 +70,29 @@ public class UpsertProfessionalCommandHandler : IRequestHandler<UpsertProfession
 
             var limite = PlanConstants.GetLimiteProfissionais(establishment.CurrentPlan);
 
+            // Conta apenas profissionais ATIVOS (o limite é de ativos, não de total)
+            bool criarInativo = false;
             if (limite != PlanConstants.LimiteIlimitado)
             {
-                var count = await _db.Professionals
-                    .CountAsync(p => p.EstablishmentId == request.EstablishmentId, cancellationToken);
+                var activeCount = await _db.Professionals
+                    .CountAsync(p => p.EstablishmentId == request.EstablishmentId && p.IsActive, cancellationToken);
 
-                if (count >= limite)
+                if (activeCount >= limite)
                 {
+                    criarInativo = true;
                     var planLabel = establishment.CurrentPlan == PlanConstants.Profissional
                         ? "Profissional" : "Básico";
-                    throw new InvalidOperationException(
-                        $"Limite de {limite} profissional(is) atingido para o plano {planLabel}. " +
-                        $"Faça upgrade para o plano Profissional para adicionar mais.");
+                    planWarning =
+                        $"Profissional criado como inativo — limite de {limite} profissional(is) ativo(s) atingido " +
+                        $"no plano {planLabel}. Desative outro profissional ou faça upgrade do plano.";
                 }
             }
 
             professional = new Professional
             {
-                TenantId = _tenantService.TenantId,
+                TenantId        = _tenantService.TenantId,
                 EstablishmentId = request.EstablishmentId,
+                IsActive        = !criarInativo,   // inativo se no limite
             };
             _db.Professionals.Add(professional);
         }
@@ -93,6 +106,6 @@ public class UpsertProfessionalCommandHandler : IRequestHandler<UpsertProfession
         if (request.WhatsApp is not null) professional.WhatsApp = new string(request.WhatsApp.Where(char.IsDigit).ToArray());
 
         await _db.SaveChangesAsync(cancellationToken);
-        return professional.Id;
+        return new UpsertProfessionalResult(professional.Id, professional.IsActive, planWarning);
     }
 }

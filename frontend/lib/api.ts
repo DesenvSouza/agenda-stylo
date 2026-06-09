@@ -101,12 +101,18 @@ export type ActivateAccessResult = {
   whatsApp: string;
 };
 
+export type UpsertProfessionalResult = {
+  id: string;
+  isActive: boolean;
+  planWarning: string | null;
+};
+
 export const professionalsApi = {
   list: (establishmentId: string) =>
     api.get<ProfessionalDto[]>("/api/professionals", { params: { establishmentId } }),
-  upsert: (data: object) => api.post<{ id: string }>("/api/professionals", data),
-  update: (id: string, data: object) => api.put(`/api/professionals/${id}`, data),
-  toggleActive: (id: string) => api.patch(`/api/professionals/${id}/toggle-active`),
+  upsert: (data: object) => api.post<UpsertProfessionalResult>("/api/professionals", data),
+  update: (id: string, data: object) => api.put<UpsertProfessionalResult>(`/api/professionals/${id}`, data),
+  toggleActive: (id: string) => api.patch<{ isActive: boolean }>(`/api/professionals/${id}/toggle-active`),
   delete: (id: string) => api.delete(`/api/professionals/${id}`),
   uploadPhoto: (id: string, file: File) => {
     const form = new FormData();
@@ -187,12 +193,18 @@ export type CreateBlockInput = {
   blockType?: string;
 };
 
+export type UpsertServiceResult = {
+  id: string;
+  isActive: boolean;
+  planWarning: string | null;
+};
+
 export const servicesApi = {
   list: (establishmentId: string) =>
     api.get("/api/services", { params: { establishmentId } }),
-  upsert: (data: object) => api.post("/api/services", data),
-  update: (id: string, data: object) => api.put(`/api/services/${id}`, data),
-  toggleActive: (id: string) => api.patch(`/api/services/${id}/toggle-active`),
+  upsert: (data: object) => api.post<UpsertServiceResult>("/api/services", data),
+  update: (id: string, data: object) => api.put<UpsertServiceResult>(`/api/services/${id}`, data),
+  toggleActive: (id: string) => api.patch<{ isActive: boolean }>(`/api/services/${id}/toggle-active`),
   delete: (id: string) => api.delete(`/api/services/${id}`),
 };
 

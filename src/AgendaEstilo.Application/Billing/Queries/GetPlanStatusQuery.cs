@@ -52,11 +52,12 @@ public class GetPlanStatusQueryHandler : IRequestHandler<GetPlanStatusQuery, Pla
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new KeyNotFoundException("Estabelecimento não encontrado.");
 
+        // Conta apenas ATIVOS — o limite do plano é sobre profissionais/serviços ativos
         var profCount = await _db.Professionals
-            .CountAsync(p => p.EstablishmentId != Guid.Empty, cancellationToken);   // tenant filter já aplicado
+            .CountAsync(p => p.IsActive, cancellationToken);   // tenant filter já aplicado
 
         var svcCount = await _db.Services
-            .CountAsync(cancellationToken);   // tenant filter já aplicado
+            .CountAsync(s => s.IsActive, cancellationToken);   // tenant filter já aplicado
 
         var plan    = est.CurrentPlan;
         var expires = est.PlanExpiresAt;
