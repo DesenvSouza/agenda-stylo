@@ -19,23 +19,23 @@ function fmt(n: number) {
 }
 
 function StatCard({
-  label, value, sub, icon: Icon, color,
+  label, value, sub, icon: Icon, iconClass,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon: React.ElementType;
-  color: string;
+  iconClass: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border p-5 flex gap-4 items-start">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-        <Icon size={20} />
+    <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-5 flex gap-4 items-start">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}>
+        <Icon size={19} />
       </div>
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      <div className="min-w-0">
+        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
+        <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
+        {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -51,15 +51,19 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-center py-20 text-gray-400">Carregando...</div>;
-  if (!summary) return <div className="text-center py-20 text-red-500">Erro ao carregar dados.</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-32">
+      <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+  if (!summary) return <div className="text-center py-20 text-red-400">Erro ao carregar dados.</div>;
 
   const categoryEntries = Object.entries(summary.establishmentsByCategory).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-1">Visão geral do sistema</p>
       </div>
 
@@ -70,59 +74,59 @@ export default function AdminDashboardPage() {
           value={summary.totalEstablishments}
           sub={`+${summary.newThisMonth} este mês`}
           icon={Building2}
-          color="bg-blue-50 text-blue-600"
+          iconClass="bg-blue-500/10 text-blue-400"
         />
         <StatCard
           label="MRR Estimado"
           value={fmt(summary.mrrEstimate)}
           sub={`Receita total: ${fmt(summary.totalRevenue)}`}
           icon={DollarSign}
-          color="bg-green-50 text-green-600"
+          iconClass="bg-emerald-500/10 text-emerald-400"
         />
         <StatCard
           label="Agendamentos"
           value={summary.totalBookings.toLocaleString('pt-BR')}
           sub={`${summary.totalBookingsThisMonth} este mês`}
           icon={Calendar}
-          color="bg-purple-50 text-purple-600"
+          iconClass="bg-purple-500/10 text-purple-400"
         />
         <StatCard
           label="Promotores"
           value={summary.totalPromoters}
           sub={`${summary.activePromoters} ativos · ${fmt(summary.totalCommissionsOwed)} em comissões`}
           icon={Users}
-          color="bg-orange-50 text-orange-600"
+          iconClass="bg-orange-500/10 text-orange-400"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top promotores do mês */}
-        <div className="bg-white rounded-xl border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Award size={18} className="text-orange-500" />
+        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm">
+              <Award size={16} className="text-orange-400" />
               Top Promotores (Mês)
             </h2>
-            <Link href="/admin/promoters" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+            <Link href="/admin/promoters" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
               Ver todos <ArrowUpRight size={12} />
             </Link>
           </div>
           {summary.topPromotersThisMonth.length === 0 ? (
-            <p className="text-sm text-gray-400">Nenhuma conversão este mês.</p>
+            <p className="text-sm text-gray-600">Nenhuma conversão este mês.</p>
           ) : (
             <div className="space-y-3">
               {summary.topPromotersThisMonth.map((p: TopPromoterDto, i: number) => (
                 <div key={p.id} className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    i === 0 ? 'bg-yellow-100 text-yellow-700' :
-                    i === 1 ? 'bg-gray-100 text-gray-600' :
-                    'bg-amber-100 text-amber-700'
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    i === 0 ? 'bg-yellow-500/15 text-yellow-400' :
+                    i === 1 ? 'bg-gray-500/15 text-gray-400' :
+                    'bg-amber-500/15 text-amber-400'
                   }`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.conversions} conversões</p>
+                    <p className="text-sm font-medium text-gray-200 truncate">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.conversions} conversões</p>
                   </div>
-                  <span className="text-sm font-semibold text-green-600">{fmt(p.commission)}</span>
+                  <span className="text-sm font-semibold text-emerald-400 shrink-0">{fmt(p.commission)}</span>
                 </div>
               ))}
             </div>
@@ -130,33 +134,33 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Estabelecimentos recentes */}
-        <div className="bg-white rounded-xl border p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Clock size={18} className="text-blue-500" />
+        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm">
+              <Clock size={16} className="text-blue-400" />
               Últimos Estabelecimentos
             </h2>
-            <Link href="/admin/establishments" className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+            <Link href="/admin/establishments" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
               Ver todos <ArrowUpRight size={12} />
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-1">
             {summary.recentEstablishments.map((est: RecentEstablishmentDto) => (
-              <div key={est.id} className="flex items-center gap-3 py-2 border-b last:border-0">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+              <div key={est.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+                <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold text-sm shrink-0">
                   {est.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{est.name}</p>
-                  <p className="text-xs text-gray-400">{est.category} · {est.slug}</p>
+                  <p className="text-sm font-medium text-gray-200 truncate">{est.name}</p>
+                  <p className="text-xs text-gray-500">{est.category} · {est.slug}</p>
                 </div>
                 <div className="text-right shrink-0">
                   {est.referralCode && (
-                    <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                    <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium">
                       {est.referralCode}
                     </span>
                   )}
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-600 mt-0.5">
                     {new Date(est.createdAt).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
@@ -168,15 +172,15 @@ export default function AdminDashboardPage() {
 
       {/* Por categoria */}
       {categoryEntries.length > 0 && (
-        <div className="bg-white rounded-xl border p-6">
-          <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-purple-500" />
+        <div className="bg-[#1a1d28] rounded-xl border border-white/6 p-6">
+          <h2 className="font-semibold text-gray-200 flex items-center gap-2 text-sm mb-5">
+            <TrendingUp size={16} className="text-purple-400" />
             Estabelecimentos por Categoria
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {categoryEntries.map(([cat, count]) => (
-              <div key={cat} className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-gray-900">{count}</p>
+              <div key={cat} className="bg-white/4 rounded-xl p-4 text-center border border-white/5 hover:bg-white/6 transition-colors">
+                <p className="text-2xl font-bold text-white">{count}</p>
                 <p className="text-xs text-gray-500 mt-1">{cat}</p>
               </div>
             ))}
