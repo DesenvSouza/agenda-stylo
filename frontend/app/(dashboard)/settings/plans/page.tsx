@@ -7,10 +7,6 @@ import { cn } from "@/lib/utils";
 
 const UNLIMITED = 2147483647; // int.MaxValue
 
-function fmtLimit(v: number) {
-  return v >= UNLIMITED ? "Ilimitado" : String(v);
-}
-
 function UsageBar({
   label,
   used,

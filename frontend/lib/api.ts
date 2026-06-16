@@ -325,3 +325,25 @@ export type PlanStatusDto = {
 export const billingApi = {
   getStatus: () => api.get<PlanStatusDto>("/api/billing/status"),
 };
+
+// ── Comunicados ──────────────────────────────────────────────────────────────
+
+export type AnnouncementDto = {
+  id: string;
+  title: string;
+  body: string;
+  severity: "Novidade" | "Info" | "Aviso" | "Urgente";
+  target: "Todos" | "Basico" | "Profissional";
+  startsAt: string;
+  endsAt: string;
+  actionLabel: string | null;
+  actionUrl: string | null;
+  isDismissible: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const announcementsApi = {
+  getActive: () => api.get<AnnouncementDto[]>("/api/announcements/active"),
+};

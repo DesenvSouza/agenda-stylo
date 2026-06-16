@@ -261,9 +261,13 @@ export default function EstablishmentsAdminPage() {
           </div>
         ) : (
           <>
-            {/* Cabeçalho */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-white/[0.06]">
-              {['Estabelecimento', 'Categoria', 'Plano', 'Receita', 'Agendamentos', 'Cadastro', ''].map(h => (
+            {/* Cabeçalho — mesmo template das linhas: última coluna fixada em 80px */}
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_80px] gap-4 px-5 py-3 border-b border-white/[0.06] items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 shrink-0" />
+                <span className="text-xs font-medium text-[#555]">Estabelecimento</span>
+              </div>
+              {['Categoria', 'Plano', 'Receita', 'Agendamentos', 'Cadastro', ''].map(h => (
                 <span key={h} className="text-xs font-medium text-[#555]">{h}</span>
               ))}
             </div>
@@ -272,7 +276,7 @@ export default function EstablishmentsAdminPage() {
               {data.items.map((est: EstablishmentAdminDto) => (
                 <div
                   key={est.id}
-                  className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors"
+                  className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_80px] gap-4 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors"
                 >
                   {/* Estabelecimento */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -301,7 +305,7 @@ export default function EstablishmentsAdminPage() {
                   {/* Ação */}
                   <button
                     onClick={() => setActivating(est)}
-                    className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 text-[11px] font-semibold hover:bg-indigo-500/20 transition-colors whitespace-nowrap flex items-center gap-1"
+                    className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 text-[11px] font-semibold hover:bg-indigo-500/20 transition-colors"
                   >
                     <Zap size={11} />
                     {est.currentPlan ? 'Alterar' : 'Ativar'}

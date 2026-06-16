@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (role === "Profissional") {
         router.replace("/professional");
       } else {
-        router.replace("/");
+        router.replace("/dashboard");
       }
     } catch {
       setError("Credenciais inválidas. Verifique seu email/WhatsApp e senha.");

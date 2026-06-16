@@ -9,6 +9,7 @@ import {
   Building2,
   TrendingUp,
   Users,
+  Megaphone,
   LogOut,
   Menu,
   X,
@@ -16,10 +17,11 @@ import {
 } from 'lucide-react';
 
 const adminNav = [
-  { href: '/admin',                label: 'Dashboard',        icon: LayoutDashboard },
-  { href: '/admin/establishments', label: 'Estabelecimentos', icon: Building2 },
-  { href: '/admin/financial',      label: 'Financeiro',       icon: TrendingUp },
-  { href: '/admin/promoters',      label: 'Promotores',       icon: Users },
+  { href: '/admin',                  label: 'Dashboard',        icon: LayoutDashboard },
+  { href: '/admin/establishments',   label: 'Estabelecimentos', icon: Building2 },
+  { href: '/admin/financial',        label: 'Financeiro',       icon: TrendingUp },
+  { href: '/admin/promoters',        label: 'Promotores',       icon: Users },
+  { href: '/admin/announcements',    label: 'Comunicados',      icon: Megaphone },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

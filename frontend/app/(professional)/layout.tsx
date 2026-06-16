@@ -27,7 +27,7 @@ export default function ProfessionalLayout({ children }: { children: React.React
       router.replace("/login");
     }
     if (!isLoading && user && user.role !== "Profissional") {
-      router.replace("/");
+      router.replace("/dashboard");
     }
   }, [user, isLoading, router]);
 

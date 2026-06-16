@@ -258,6 +258,60 @@ export const adminApi = {
       .then((r) => r.data),
 };
 
+// ── Comunicados (Admin) ───────────────────────────────────────────────────────
+
+export interface AnnouncementAdminDto {
+  id:            string;
+  title:         string;
+  body:          string;
+  severity:      'Novidade' | 'Info' | 'Aviso' | 'Urgente';
+  target:        'Todos' | 'Basico' | 'Profissional';
+  startsAt:      string;
+  endsAt:        string;
+  actionLabel:   string | null;
+  actionUrl:     string | null;
+  isDismissible: boolean;
+  isActive:      boolean;
+  createdAt:     string;
+  updatedAt:     string;
+}
+
+export interface UpsertAnnouncementPayload {
+  title:         string;
+  body:          string;
+  severity:      string;
+  target:        string;
+  startsAt:      string;
+  endsAt:        string;
+  actionLabel?:  string | null;
+  actionUrl?:    string | null;
+  isDismissible: boolean;
+  isActive:      boolean;
+}
+
+export const announcementsAdminApi = {
+  list: () =>
+    getAdminAxios()
+      .get<AnnouncementAdminDto[]>('/api/system/admin/announcements/')
+      .then((r) => r.data),
+
+  create: (data: UpsertAnnouncementPayload) =>
+    getAdminAxios()
+      .post<AnnouncementAdminDto>('/api/system/admin/announcements/', {
+        id: null,
+        ...data,
+      })
+      .then((r) => r.data),
+
+  update: (id: string, data: UpsertAnnouncementPayload) =>
+    getAdminAxios()
+      .put<AnnouncementAdminDto>(`/api/system/admin/announcements/${id}`, data)
+      .then((r) => r.data),
+
+  remove: (id: string) =>
+    getAdminAxios().delete(`/api/system/admin/announcements/${id}`),
+};
+
 // ── Promoter endpoints ────────────────────────────────────────────────────────
 export const promoterApi = {
   getStats: () =>

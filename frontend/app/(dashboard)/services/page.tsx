@@ -319,7 +319,8 @@ export default function ServicesPage() {
     }
   }
 
-  async function handleToggleActive(id: string, currentActive: boolean) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function handleToggleActive(id: string, _currentActive: boolean) {
     setBusyId(id);
     try {
       const res = await servicesApi.toggleActive(id);

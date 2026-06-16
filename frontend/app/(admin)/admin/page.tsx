@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminApi, AdminSummary, TopPromoterDto, RecentEstablishmentDto } from '@/lib/admin-api';
 import {
-  Building2, TrendingUp, Users, Calendar,
+  Building2, Users, Calendar,
   DollarSign, ChevronRight,
 } from 'lucide-react';
 

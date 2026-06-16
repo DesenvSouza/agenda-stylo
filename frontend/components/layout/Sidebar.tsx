@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 
 const navItems = [
-  { href: "/", icon: Home, label: "Início" },
+  { href: "/dashboard", icon: Home, label: "Início" },
   { href: "/bookings", icon: Calendar, label: "Agenda" },
   { href: "/professionals", icon: UserRound, label: "Profissionais" },
   { href: "/services", icon: Scissors, label: "Serviços" },
@@ -46,7 +46,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
           return (
             <Link
               key={item.href}

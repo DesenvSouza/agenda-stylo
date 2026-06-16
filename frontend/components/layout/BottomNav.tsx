@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 // ── Itens principais (sempre visíveis no nav) ────────────────────────────────
 const mainItems = [
-  { href: "/",           icon: Home,     label: "Home" },
+  { href: "/dashboard",  icon: Home,     label: "Home" },
   { href: "/bookings",   icon: Calendar, label: "Agenda" },
   { href: "/professionals", icon: UserRound, label: "Profissionais" },
   { href: "/clients",    icon: Users,    label: "Clientes" },
@@ -43,7 +43,7 @@ export function BottomNav() {
             const Icon = item.icon;
             const isActive =
               pathname === item.href ||
-              (item.href !== "/" && pathname?.startsWith(item.href));
+              (item.href !== "/dashboard" && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}
@@ -103,7 +103,7 @@ export function BottomNav() {
                 const Icon = item.icon;
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/" && pathname?.startsWith(item.href));
+                  (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                 return (
                   <Link
                     key={item.href}

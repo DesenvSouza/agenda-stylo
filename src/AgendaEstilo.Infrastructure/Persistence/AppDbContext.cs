@@ -33,6 +33,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<SystemUser> SystemUsers => Set<SystemUser>();
     public DbSet<PlanSubscriptionPayment> PlanSubscriptionPayments => Set<PlanSubscriptionPayment>();
     public DbSet<PromoterConversion> PromoterConversions => Set<PromoterConversion>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,20 @@ public class AppDbContext : DbContext, IAppDbContext
              .WithMany(e => e.PromoterConversions)
              .HasForeignKey(e => e.EstablishmentId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── Comunicados (cross-tenant, sem query filter) ─────────────────────
+        modelBuilder.Entity<Announcement>(b =>
+        {
+            b.ToTable("announcements");
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Title).HasMaxLength(100).IsRequired();
+            b.Property(e => e.Body).HasMaxLength(500).IsRequired();
+            b.Property(e => e.ActionLabel).HasMaxLength(80);
+            b.Property(e => e.ActionUrl).HasMaxLength(500);
+            // Índices para a query de filtro ativa
+            b.HasIndex(e => new { e.StartsAt, e.EndsAt });
+            b.HasIndex(e => e.IsActive);
         });
     }
 

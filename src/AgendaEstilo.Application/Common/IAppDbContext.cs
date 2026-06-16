@@ -20,5 +20,6 @@ public interface IAppDbContext
     DbSet<SystemUser> SystemUsers { get; }
     DbSet<PlanSubscriptionPayment> PlanSubscriptionPayments { get; }
     DbSet<PromoterConversion> PromoterConversions { get; }
+    DbSet<Announcement> Announcements { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
