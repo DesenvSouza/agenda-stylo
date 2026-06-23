@@ -1,7 +1,10 @@
 using AgendaEstilo.Application.Admin.Commands;
 using AgendaEstilo.Application.Admin.Queries;
+using AgendaEstilo.Application.Common;
+using AgendaEstilo.Infrastructure.Notifications;
 using MediatR;
 using AgendaEstilo.Domain.Constants;
+using Microsoft.Extensions.Configuration;
 
 namespace AgendaEstilo.Api.Endpoints;
 
@@ -66,10 +69,42 @@ public static class AdminEndpoints
             return Results.Ok(result);
         });
 
-        admin.MapPost("/promoters/invite", async (InvitePromoterCommand cmd, HttpContext ctx, IMediator mediator) =>
+        admin.MapPost("/promoters/invite", async (
+            InvitePromoterCommand cmd,
+            HttpContext ctx,
+            IMediator mediator,
+            IEmailService email,
+            IConfiguration config) =>
         {
             var adminId = Guid.Parse(ctx.User.FindFirst("systemUserId")!.Value);
             var result  = await mediator.Send(cmd with { AdminId = adminId });
+
+            // E-mail de convite (fire-and-forget)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var baseUrl    = config["FrontendUrl"]?.TrimEnd('/') ?? "https://agendaestilo.com.br";
+                    var loginUrl   = $"{baseUrl}/admin-login";
+                    var referralUrl = $"{baseUrl}/cadastro?ref={result.PromoterCode}";
+
+                    var html = NotificationTemplates.PromoterInvite(
+                        name: cmd.Name,
+                        email: result.Email,
+                        tempPassword: result.TempPassword,
+                        promoterCode: result.PromoterCode,
+                        commissionPercent: cmd.CommissionPercent,
+                        loginUrl: loginUrl,
+                        referralUrl: referralUrl);
+
+                    await email.SendAsync(
+                        result.Email,
+                        "Você foi convidado a ser Promotor — AgendaEstilo",
+                        html);
+                }
+                catch { /* silencia — promotor já criado */ }
+            });
+
             return Results.Ok(result);
         });
 

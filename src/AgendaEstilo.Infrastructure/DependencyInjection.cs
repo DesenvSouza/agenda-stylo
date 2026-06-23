@@ -34,7 +34,6 @@ public static class DependencyInjection
         services.AddSingleton<ISlotCacheService, SlotCacheService>();
 
         // Notificações
-        services.AddScoped<IWhatsAppService, EvolutionWhatsAppService>();
         services.AddScoped<IEmailService, ResendEmailService>();
         services.AddScoped<IBookingNotificationService, BookingNotificationService>();
         services.AddScoped<SendRemindersJob>();

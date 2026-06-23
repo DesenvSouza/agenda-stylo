@@ -7,7 +7,6 @@ public class NotificationSettings
     public bool NotifyClientCancellation { get; set; } = true;
     public bool NotifyProfessionalNewBooking { get; set; } = true;
     public bool NotifyProfessionalCancellation { get; set; } = false;
-    public bool EmailFallbackEnabled { get; set; } = false;
 
     public static NotificationSettings Default => new();
 }

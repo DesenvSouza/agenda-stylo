@@ -68,7 +68,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
             Slug = request.Slug,
             Category = request.Category,
             Phone = request.Phone,
-            ReferralCode = validatedReferralCode
+            ReferralCode = validatedReferralCode,
+            ContactEmail = request.Email
         };
 
         var user = new User

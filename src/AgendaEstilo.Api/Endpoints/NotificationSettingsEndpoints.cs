@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AgendaEstilo.Application.Common;
 using AgendaEstilo.Domain.ValueObjects;
+using AgendaEstilo.Infrastructure.Notifications;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,14 +52,27 @@ public static class NotificationSettingsEndpoints
         });
 
         group.MapPost("/test", async (
-            [FromBody] TestWhatsAppRequest request,
-            IWhatsAppService whatsApp) =>
+            HttpContext ctx,
+            [FromBody] TestEmailRequest request,
+            IAppDbContext db,
+            IEmailService email) =>
         {
-            var msg = "🔔 Teste de notificação do AgendaEstilo. Se recebeu esta mensagem, a integração está funcionando! ✅";
-            var sent = await whatsApp.SendMessageAsync(request.Phone, msg);
-            return sent
-                ? Results.Ok(new { message = "Mensagem enviada com sucesso!" })
-                : Results.BadRequest(new { message = "Falha ao enviar. Verifique as configurações da Evolution API." });
+            var eid = ctx.User.FindFirst("eid")?.Value;
+            if (!Guid.TryParse(eid, out var estId)) return Results.Unauthorized();
+
+            var establishment = await db.Establishments
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(e => e.Id == estId && !e.IsDeleted);
+            if (establishment == null) return Results.NotFound();
+
+            var to = request.Email?.Trim();
+            if (string.IsNullOrEmpty(to))
+                return Results.BadRequest(new { message = "Informe um e-mail para o teste." });
+
+            var html = NotificationTemplates.TestEmail(establishment.Name);
+            await email.SendAsync(to, "Teste de notificação — AgendaEstilo", html);
+
+            return Results.Ok(new { message = $"E-mail de teste enviado para {to}." });
         });
     }
 
@@ -71,4 +85,4 @@ public static class NotificationSettingsEndpoints
 }
 
 public record UpdateNotificationSettingsRequest(NotificationSettings Settings, string? ContactEmail);
-public record TestWhatsAppRequest(string Phone);
+public record TestEmailRequest(string? Email);

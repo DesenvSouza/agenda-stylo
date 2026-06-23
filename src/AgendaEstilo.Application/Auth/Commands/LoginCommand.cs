@@ -36,16 +36,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
 
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        // Suporte a login por e-mail (proprietário) ou WhatsApp (profissional)
-        var login = request.Email.Trim();
+        var login = request.Email.Trim().ToLowerInvariant();
         var user = await _db.Users
             .IgnoreQueryFilters()
-            .Include(u => u.Professional)
-            .FirstOrDefaultAsync(u =>
-                !u.IsDeleted &&
-                (u.Email == login ||
-                 (u.Professional != null && u.Professional.WhatsApp == new string(login.Where(char.IsDigit).ToArray()))),
-                cancellationToken)
+            .FirstOrDefaultAsync(u => !u.IsDeleted && u.Email == login, cancellationToken)
             ?? throw new UnauthorizedAccessException("Credenciais inválidas.");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))

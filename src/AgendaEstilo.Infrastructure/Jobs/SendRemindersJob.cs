@@ -14,23 +14,21 @@ namespace AgendaEstilo.Infrastructure.Jobs;
 public class SendRemindersJob
 {
     private readonly IAppDbContext _db;
-    private readonly IWhatsAppService _whatsApp;
     private readonly IEmailService _email;
     private readonly IConfiguration _config;
     private readonly ILogger<SendRemindersJob> _logger;
 
     public SendRemindersJob(
-        IAppDbContext db, IWhatsAppService whatsApp, IEmailService email,
+        IAppDbContext db, IEmailService email,
         IConfiguration config, ILogger<SendRemindersJob> logger)
     {
-        _db = db; _whatsApp = whatsApp; _email = email;
+        _db = db; _email = email;
         _config = config; _logger = logger;
     }
 
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-
         await Send24hRemindersAsync(now, ct);
         await Send1hRemindersAsync(now, ct);
     }
@@ -93,6 +91,12 @@ public class SendRemindersJob
 
     private async Task SendReminderAsync(Booking booking, ReminderType type, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(booking.Client.Email))
+        {
+            _logger.LogDebug("Booking {BookingId}: client has no email, skipping {Type} reminder.", booking.Id, type);
+            return;
+        }
+
         var (settings, tz) = GetContext(booking.Establishment);
 
         if (type == ReminderType.H24 && !settings.RemindersEnabled24h) return;
@@ -102,42 +106,42 @@ public class SendRemindersJob
         var ptBR = new CultureInfo("pt-BR");
         var cancelUrl = $"{FrontendUrl()}/{booking.Establishment.Slug}/cancelar/{booking.CancelToken}";
 
-        var message = type == ReminderType.H24
-            ? NotificationTemplates.ClientReminder24h(
+        string html;
+        string subject;
+
+        if (type == ReminderType.H24)
+        {
+            html = NotificationTemplates.ClientReminder24hEmail(
                 clientName: booking.Client.Name,
                 serviceName: booking.Service.Name,
                 time: local.ToString("HH:mm"),
                 professionalName: booking.Professional.Name,
                 address: booking.Establishment.Address ?? booking.Establishment.Name,
                 cancelUrl: cancelUrl,
-                establishmentName: booking.Establishment.Name)
-            : NotificationTemplates.ClientReminder1h(
+                establishmentName: booking.Establishment.Name);
+            subject = $"Lembrete: {booking.Service.Name} amanhã às {local:HH:mm} — {booking.Establishment.Name}";
+        }
+        else
+        {
+            html = NotificationTemplates.ClientReminder1hEmail(
                 clientName: booking.Client.Name,
                 serviceName: booking.Service.Name,
                 time: local.ToString("HH:mm"),
                 address: booking.Establishment.Address ?? booking.Establishment.Name,
                 establishmentName: booking.Establishment.Name);
+            subject = $"Em 1 hora: {booking.Service.Name} às {local:HH:mm} — {booking.Establishment.Name}";
+        }
 
         bool sent;
-        ReminderChannel channel;
         try
         {
-            sent = await _whatsApp.SendMessageAsync(booking.Client.Phone, message, ct);
-            channel = ReminderChannel.WhatsApp;
-
-            if (!sent && settings.EmailFallbackEnabled && !string.IsNullOrEmpty(booking.Establishment.ContactEmail))
-            {
-                await _email.SendAsync(booking.Establishment.ContactEmail,
-                    $"Lembrete: {booking.Service.Name}", message, ct);
-                channel = ReminderChannel.Email;
-                sent = true;
-            }
+            await _email.SendAsync(booking.Client.Email, subject, html, ct);
+            sent = true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Reminder failed for booking {BookingId}", booking.Id);
+            _logger.LogError(ex, "Reminder email failed for booking {BookingId}", booking.Id);
             sent = false;
-            channel = ReminderChannel.WhatsApp;
         }
 
         _db.ReminderLogs.Add(new ReminderLog
@@ -145,7 +149,7 @@ public class SendRemindersJob
             TenantId = booking.TenantId,
             BookingId = booking.Id,
             Type = type,
-            Channel = channel,
+            Channel = ReminderChannel.Email,
             SentAt = DateTime.UtcNow,
             Success = sent
         });

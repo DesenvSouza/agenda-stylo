@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell, ChevronLeft, Check, Send, Loader2,
-  Wifi, WifiOff, MessageSquare, Mail, UserRound,
+  Mail, UserRound, Clock, CalendarCheck, X,
 } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,6 @@ interface NotificationSettings {
   notifyClientCancellation: boolean;
   notifyProfessionalNewBooking: boolean;
   notifyProfessionalCancellation: boolean;
-  emailFallbackEnabled: boolean;
 }
 
 const DEFAULT: NotificationSettings = {
@@ -24,7 +23,6 @@ const DEFAULT: NotificationSettings = {
   notifyClientCancellation: true,
   notifyProfessionalNewBooking: true,
   notifyProfessionalCancellation: false,
-  emailFallbackEnabled: false,
 };
 
 function Toggle({
@@ -36,7 +34,7 @@ function Toggle({
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
       className={cn(
-        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0",
         checked ? "bg-[#EF9F27]" : "bg-[#D4D4D4]",
         disabled && "opacity-50 cursor-not-allowed",
       )}
@@ -54,9 +52,9 @@ function SettingRow({
 }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3.5 border-b border-black/5 last:border-0">
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-[#1B1B1B]">{label}</p>
-        {description && <p className="text-xs text-[#9B9B9B] mt-0.5">{description}</p>}
+        {description && <p className="text-xs text-[#9B9B9B] mt-0.5 leading-relaxed">{description}</p>}
       </div>
       <Toggle checked={checked} onChange={onChange} disabled={disabled} />
     </div>
@@ -70,10 +68,9 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [testPhone, setTestPhone] = useState("");
+  const [testEmail, setTestEmail] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [waStatus] = useState<"unknown" | "connected" | "disconnected">("unknown");
 
   useEffect(() => {
     api.get("/api/settings/notifications")
@@ -103,15 +100,16 @@ export default function NotificationsPage() {
   };
 
   const handleTest = async () => {
-    if (!testPhone.trim()) return;
+    const to = testEmail.trim();
+    if (!to) return;
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await api.post("/api/settings/notifications/test", { phone: testPhone });
+      const r = await api.post("/api/settings/notifications/test", { email: to });
       setTestResult({ ok: true, msg: r.data.message });
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? "Falha ao enviar mensagem.";
+        ?? "Falha ao enviar e-mail de teste.";
       setTestResult({ ok: false, msg });
     } finally {
       setTesting(false);
@@ -139,30 +137,32 @@ export default function NotificationsPage() {
             <Bell size={20} className="text-[#EF9F27]" />
             Notificações
           </h1>
-          <p className="text-sm text-[#9B9B9B]">WhatsApp e e-mail para clientes e profissionais</p>
+          <p className="text-sm text-[#9B9B9B]">Configurações de e-mail para clientes e profissionais</p>
         </div>
       </div>
 
-      {/* WhatsApp */}
+      {/* Bandeira informativa */}
+      <div className="flex items-start gap-3 bg-[#FAEEDA] rounded-2xl px-4 py-3.5 mb-4">
+        <Mail size={18} className="text-[#EF9F27] mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-[#1B1B1B]">Notificações via e-mail</p>
+          <p className="text-xs text-[#6B6B6B] mt-0.5 leading-relaxed">
+            Todos os avisos são enviados por e-mail. Para lembretes ao cliente, o e-mail deve ser informado no momento do agendamento.
+          </p>
+        </div>
+      </div>
+
+      {/* Lembretes para clientes */}
       <div className="bg-white rounded-2xl border border-black/8 mb-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
-          <div className="flex items-center gap-2">
-            <MessageSquare size={18} className="text-[#25D366]" />
-            <h2 className="font-semibold text-[#1B1B1B]">WhatsApp</h2>
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-black/5">
+          <div className="w-8 h-8 rounded-xl bg-[#FAEEDA] flex items-center justify-center">
+            <Clock size={16} className="text-[#EF9F27]" />
           </div>
-          <div className={cn(
-            "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full",
-            waStatus === "connected"
-              ? "bg-green-50 text-green-700"
-              : waStatus === "disconnected"
-              ? "bg-amber-50 text-amber-700"
-              : "bg-[#F5F5F5] text-[#9B9B9B]",
-          )}>
-            {waStatus === "connected" ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {waStatus === "connected" ? "Conectado" : waStatus === "disconnected" ? "Desconectado" : "Verificar"}
+          <div>
+            <h2 className="font-semibold text-[#1B1B1B] text-sm">Lembretes para clientes</h2>
+            <p className="text-xs text-[#9B9B9B]">Enviados automaticamente para o e-mail do cliente</p>
           </div>
         </div>
-
         <div className="px-5">
           <SettingRow
             label="Confirmação ao agendar"
@@ -185,90 +185,105 @@ export default function NotificationsPage() {
           />
           <SettingRow
             label="Notificação de cancelamento"
-            description="Avisa o cliente quando um agendamento é cancelado"
+            description="Avisa o cliente por e-mail quando um agendamento é cancelado"
             checked={settings.notifyClientCancellation}
             onChange={set("notifyClientCancellation")}
           />
         </div>
-
-        {/* Teste */}
-        <div className="px-5 pb-5 pt-3 border-t border-black/5 mt-1">
-          <p className="text-xs font-semibold text-[#9B9B9B] uppercase tracking-wide mb-2">
-            Enviar mensagem de teste
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              value={testPhone}
-              onChange={e => setTestPhone(e.target.value)}
-              placeholder="(31) 99963-0255"
-              className="flex-1 h-10 px-3 rounded-xl border border-black/15 text-sm focus:outline-none focus:border-[#EF9F27]"
-            />
-            <button
-              onClick={handleTest}
-              disabled={testing || !testPhone.trim()}
-              className="h-10 px-4 bg-[#1B1B1B] text-white text-sm font-semibold rounded-xl disabled:opacity-40 flex items-center gap-1.5"
-            >
-              {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Enviar
-            </button>
-          </div>
-          {testResult && (
-            <p className={cn("text-xs mt-2", testResult.ok ? "text-green-600" : "text-red-500")}>
-              {testResult.msg}
-            </p>
-          )}
-        </div>
       </div>
 
-      {/* Profissionais */}
+      {/* Notificações para profissionais */}
       <div className="bg-white rounded-2xl border border-black/8 mb-4 overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-black/5">
-          <UserRound size={18} className="text-[#EF9F27]" />
-          <h2 className="font-semibold text-[#1B1B1B]">Notificações para profissionais</h2>
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-black/5">
+          <div className="w-8 h-8 rounded-xl bg-[#F0F0FF] flex items-center justify-center">
+            <UserRound size={16} className="text-indigo-500" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-[#1B1B1B] text-sm">Notificações para profissionais</h2>
+            <p className="text-xs text-[#9B9B9B]">Enviados para o e-mail cadastrado de cada profissional</p>
+          </div>
         </div>
         <div className="px-5">
           <SettingRow
             label="Novo agendamento"
-            description="Notifica o profissional por e-mail a cada novo agendamento"
+            description="Notifica o profissional a cada novo agendamento recebido"
             checked={settings.notifyProfessionalNewBooking}
             onChange={set("notifyProfessionalNewBooking")}
           />
           <SettingRow
-            label="Cancelamento"
-            description="Notifica o profissional quando um agendamento é cancelado"
+            label="Cancelamento de agendamento"
+            description="Notifica o profissional quando um cliente cancela"
             checked={settings.notifyProfessionalCancellation}
             onChange={set("notifyProfessionalCancellation")}
           />
         </div>
       </div>
 
-      {/* Fallback e-mail */}
-      <div className="bg-white rounded-2xl border border-black/8 mb-6 overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-black/5">
-          <Mail size={18} className="text-[#6B6B6B]" />
-          <h2 className="font-semibold text-[#1B1B1B]">Fallback por e-mail</h2>
+      {/* E-mail de contato */}
+      <div className="bg-white rounded-2xl border border-black/8 mb-4 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-black/5">
+          <div className="w-8 h-8 rounded-xl bg-[#F0FAF4] flex items-center justify-center">
+            <CalendarCheck size={16} className="text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-[#1B1B1B] text-sm">E-mail do estabelecimento</h2>
+            <p className="text-xs text-[#9B9B9B]">Usado no cabeçalho dos e-mails enviados</p>
+          </div>
         </div>
-        <div className="px-5">
-          <SettingRow
-            label="Enviar e-mail se WhatsApp falhar"
-            description="Usa o e-mail de contato como fallback quando a mensagem WhatsApp não é entregue"
-            checked={settings.emailFallbackEnabled}
-            onChange={set("emailFallbackEnabled")}
-          />
-        </div>
-        <div className="px-5 pb-5 pt-2">
+        <div className="px-5 py-4">
           <label className="text-xs font-semibold text-[#9B9B9B] uppercase tracking-wide mb-1.5 block">
-            E-mail de contato do estabelecimento
+            E-mail de contato
           </label>
           <input
             type="email"
             value={contactEmail}
             onChange={e => setContactEmail(e.target.value)}
             placeholder="contato@seuestablecimento.com.br"
-            disabled={!settings.emailFallbackEnabled}
-            className="w-full h-11 px-4 rounded-xl border border-black/15 text-sm focus:outline-none focus:border-[#EF9F27] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full h-11 px-4 rounded-xl border border-black/15 text-sm focus:outline-none focus:border-[#EF9F27] transition-colors"
           />
+        </div>
+      </div>
+
+      {/* Enviar e-mail de teste */}
+      <div className="bg-white rounded-2xl border border-black/8 mb-6 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-black/5">
+          <div className="w-8 h-8 rounded-xl bg-[#FAFAF8] flex items-center justify-center">
+            <Send size={15} className="text-[#6B6B6B]" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-[#1B1B1B] text-sm">Testar notificação</h2>
+            <p className="text-xs text-[#9B9B9B]">Envie um e-mail de teste para verificar a configuração</p>
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+              placeholder="seu@email.com"
+              className="flex-1 h-10 px-3.5 rounded-xl border border-black/15 text-sm focus:outline-none focus:border-[#EF9F27] transition-colors"
+            />
+            <button
+              onClick={handleTest}
+              disabled={testing || !testEmail.trim()}
+              className="h-10 px-4 bg-[#1B1B1B] text-white text-sm font-semibold rounded-xl disabled:opacity-40 flex items-center gap-1.5 transition-opacity"
+            >
+              {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Enviar
+            </button>
+          </div>
+          {testResult && (
+            <div className={cn(
+              "flex items-start gap-2 mt-3 px-3.5 py-2.5 rounded-xl text-xs font-medium",
+              testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+            )}>
+              {testResult.ok
+                ? <Check size={13} className="mt-0.5 shrink-0" />
+                : <X size={13} className="mt-0.5 shrink-0" />}
+              {testResult.msg}
+            </div>
+          )}
         </div>
       </div>
 

@@ -29,7 +29,7 @@ export default function LoginPage() {
         router.replace("/dashboard");
       }
     } catch {
-      setError("Credenciais inválidas. Verifique seu email/WhatsApp e senha.");
+      setError("Credenciais inválidas. Verifique seu e-mail e senha.");
     } finally {
       setLoading(false);
     }
@@ -50,14 +50,14 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="login">Email ou WhatsApp</Label>
+                <Label htmlFor="login">E-mail</Label>
                 <Input
                   id="login"
-                  type="text"
-                  autoComplete="username"
+                  type="email"
+                  autoComplete="email"
                   value={login}
                   onChange={(e) => setLogin(e.target.value)}
-                  placeholder="seu@email.com ou (11) 99999-9999"
+                  placeholder="seu@email.com"
                   required
                 />
               </div>

@@ -15,18 +15,17 @@ namespace AgendaEstilo.Infrastructure.Services;
 public class BookingNotificationService : IBookingNotificationService
 {
     private readonly IAppDbContext _db;
-    private readonly IWhatsAppService _whatsApp;
     private readonly IEmailService _email;
     private readonly IBackgroundJobClient _jobs;
     private readonly IConfiguration _config;
     private readonly ILogger<BookingNotificationService> _logger;
 
     public BookingNotificationService(
-        IAppDbContext db, IWhatsAppService whatsApp, IEmailService email,
+        IAppDbContext db, IEmailService email,
         IBackgroundJobClient jobs, IConfiguration config,
         ILogger<BookingNotificationService> logger)
     {
-        _db = db; _whatsApp = whatsApp; _email = email;
+        _db = db; _email = email;
         _jobs = jobs; _config = config; _logger = logger;
     }
 
@@ -56,29 +55,30 @@ public class BookingNotificationService : IBookingNotificationService
         var ptBR = new CultureInfo("pt-BR");
 
         var cancelUrl = BuildCancelUrl(booking);
-        var estabUrl = $"{FrontendUrl()}/{booking.Establishment.Slug}";
 
-        // Mensagem para o cliente
-        var clientMsg = NotificationTemplates.ClientConfirmation(
-            clientName: booking.Client.Name,
-            serviceName: booking.Service.Name,
-            professionalName: booking.Professional.Name,
-            dayOfWeek: local.ToString("dddd", ptBR),
-            date: local.ToString("dd/MM/yyyy"),
-            time: local.ToString("HH:mm"),
-            address: booking.Establishment.Address ?? booking.Establishment.Name,
-            cancelUrl: cancelUrl,
-            establishmentName: booking.Establishment.Name);
+        // E-mail para o cliente
+        if (!string.IsNullOrWhiteSpace(booking.Client.Email))
+        {
+            var html = NotificationTemplates.ClientConfirmationEmail(
+                clientName: booking.Client.Name,
+                serviceName: booking.Service.Name,
+                professionalName: booking.Professional.Name,
+                dayOfWeek: local.ToString("dddd", ptBR),
+                date: local.ToString("dd/MM/yyyy"),
+                time: local.ToString("HH:mm"),
+                address: booking.Establishment.Address ?? booking.Establishment.Name,
+                cancelUrl: cancelUrl,
+                establishmentName: booking.Establishment.Name);
 
-        var sent = await _whatsApp.SendMessageAsync(booking.Client.Phone, clientMsg, ct);
-        if (!sent && settings.EmailFallbackEnabled && !string.IsNullOrEmpty(booking.Establishment.ContactEmail))
-            await _email.SendAsync(booking.Establishment.ContactEmail, "Confirmação de agendamento", clientMsg, ct);
+            await _email.SendAsync(booking.Client.Email,
+                $"Agendamento confirmado — {booking.Establishment.Name}", html, ct);
 
-        await LogReminder(booking, ReminderType.Confirmation, sent ? ReminderChannel.WhatsApp : ReminderChannel.Email, sent, ct);
+            await LogReminder(booking, ReminderType.Confirmation, ReminderChannel.Email, true, ct);
+        }
 
-        // Mensagem para o profissional
+        // E-mail para o profissional
         if (settings.NotifyProfessionalNewBooking)
-            await NotifyProfessional(booking, local, ptBR, ct);
+            await NotifyProfessionalNewBooking(booking, local, ptBR, ct);
     }
 
     public async Task SendCancellationAsync(Guid bookingId, CancellationToken ct)
@@ -92,16 +92,25 @@ public class BookingNotificationService : IBookingNotificationService
         var local = TimeZoneInfo.ConvertTimeFromUtc(booking.ScheduledAt, tz);
         var estabUrl = $"{FrontendUrl()}/{booking.Establishment.Slug}";
 
-        var msg = NotificationTemplates.ClientCancellation(
-            clientName: booking.Client.Name,
-            serviceName: booking.Service.Name,
-            date: local.ToString("dd/MM/yyyy"),
-            time: local.ToString("HH:mm"),
-            establishmentUrl: estabUrl,
-            establishmentName: booking.Establishment.Name);
+        if (!string.IsNullOrWhiteSpace(booking.Client.Email))
+        {
+            var html = NotificationTemplates.ClientCancellationEmail(
+                clientName: booking.Client.Name,
+                serviceName: booking.Service.Name,
+                date: local.ToString("dd/MM/yyyy"),
+                time: local.ToString("HH:mm"),
+                establishmentUrl: estabUrl,
+                establishmentName: booking.Establishment.Name);
 
-        var sent = await _whatsApp.SendMessageAsync(booking.Client.Phone, msg, ct);
-        await LogReminder(booking, ReminderType.Cancellation, sent ? ReminderChannel.WhatsApp : ReminderChannel.Email, sent, ct);
+            await _email.SendAsync(booking.Client.Email,
+                $"Agendamento cancelado — {booking.Establishment.Name}", html, ct);
+
+            await LogReminder(booking, ReminderType.Cancellation, ReminderChannel.Email, true, ct);
+        }
+
+        // Notifica profissional se habilitado
+        if (settings.NotifyProfessionalCancellation)
+            await NotifyProfessionalCancellation(booking, local, ct);
     }
 
     public async Task SendThankYouAsync(Guid bookingId, CancellationToken ct)
@@ -109,27 +118,32 @@ public class BookingNotificationService : IBookingNotificationService
         var booking = await LoadBooking(bookingId, ct);
         if (booking == null) return;
 
-        var estabUrl = $"{FrontendUrl()}/{booking.Establishment.Slug}";
-        var msg = NotificationTemplates.ClientThankYou(
-            booking.Client.Name, booking.Service.Name,
-            booking.Establishment.Name, estabUrl);
+        if (!string.IsNullOrWhiteSpace(booking.Client.Email))
+        {
+            var estabUrl = $"{FrontendUrl()}/{booking.Establishment.Slug}";
+            var html = NotificationTemplates.ClientThankYouEmail(
+                booking.Client.Name, booking.Service.Name,
+                booking.Establishment.Name, estabUrl);
 
-        var sent = await _whatsApp.SendMessageAsync(booking.Client.Phone, msg, ct);
-        await LogReminder(booking, ReminderType.Confirmation, sent ? ReminderChannel.WhatsApp : ReminderChannel.Email, sent, ct);
+            await _email.SendAsync(booking.Client.Email,
+                $"Obrigado pela visita — {booking.Establishment.Name}", html, ct);
+
+            await LogReminder(booking, ReminderType.Confirmation, ReminderChannel.Email, true, ct);
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private async Task NotifyProfessional(
+    private async Task NotifyProfessionalNewBooking(
         Booking booking, DateTime localTime, CultureInfo ptBR, CancellationToken ct)
     {
-        var profUser = await _db.Users
+        var profEmail = await _db.Users
             .IgnoreQueryFilters()
             .Where(u => u.ProfessionalId == booking.ProfessionalId && !u.IsDeleted)
             .Select(u => u.Email)
             .FirstOrDefaultAsync(ct);
 
-        if (profUser == null) return;
+        if (string.IsNullOrWhiteSpace(profEmail)) return;
 
         var html = NotificationTemplates.ProfessionalNewBookingEmail(
             serviceName: booking.Service.Name,
@@ -139,8 +153,29 @@ public class BookingNotificationService : IBookingNotificationService
             time: localTime.ToString("HH:mm"),
             clientPhone: booking.Client.Phone);
 
-        await _email.SendAsync(profUser,
+        await _email.SendAsync(profEmail,
             $"Novo agendamento: {booking.Service.Name} com {booking.Client.Name}", html, ct);
+    }
+
+    private async Task NotifyProfessionalCancellation(
+        Booking booking, DateTime localTime, CancellationToken ct)
+    {
+        var profEmail = await _db.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.ProfessionalId == booking.ProfessionalId && !u.IsDeleted)
+            .Select(u => u.Email)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(profEmail)) return;
+
+        var html = NotificationTemplates.ProfessionalCancellationEmail(
+            serviceName: booking.Service.Name,
+            clientName: booking.Client.Name,
+            date: localTime.ToString("dd/MM/yyyy"),
+            time: localTime.ToString("HH:mm"));
+
+        await _email.SendAsync(profEmail,
+            $"Agendamento cancelado: {booking.Service.Name} com {booking.Client.Name}", html, ct);
     }
 
     private async Task<Booking?> LoadBooking(Guid bookingId, CancellationToken ct) =>
